@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Filter Table</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-brand">DataFilter</div>
+        <div class="nav-menu">
+            <a href="#">Menu 1</a>
+            <a href="#">Menu 2</a>
+            <a href="#">Menu 3</a>
+        </div>
+    </nav>
+
+    <!-- Filter Section -->
+    <div class="filter-container">
+        <div id="primary-filters" class="filter-group">
+            <h3>Primary Filters</h3>
+            <!-- Dynamically populated from column 2 -->
+        </div>
+        <div id="secondary-filters" class="filter-group">
+            <h3>Secondary Filters</h3>
+            <!-- Dynamically populated from column 3 -->
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="table-container">
+        <table id="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Subcategory</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Priority</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>Project Alpha</td>
+                    <td>Development</td>
+                    <td>Frontend</td>
+                    <td>Active</td>
+                    <td>2025-03-15</td>
+                    <td>High</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Task Beta</td>
+                    <td>Design</td>
+                    <td>UI/UX</td>
+                    <td>Pending</td>
+                    <td>2025-03-18</td>
+                    <td>Medium</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>Feature Gamma</td>
+                    <td>Development</td>
+                    <td>Backend</td>
+                    <td>Completed</td>
+                    <td>2025-03-10</td>
+                    <td>High</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>Bug Fix Delta</td>
+                    <td>QA</td>
+                    <td>Testing</td>
+                    <td>Active</td>
+                    <td>2025-03-20</td>
+                    <td>Critical</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>Module Epsilon</td>
+                    <td>Development</td>
+                    <td>Frontend</td>
+                    <td>Review</td>
+                    <td>2025-03-21</td>
+                    <td>Low</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>Task Zeta</td>
+                    <td>Design</td>
+                    <td>Graphics</td>
+                    <td>Pending</td>
+                    <td>2025-03-22</td>
+                    <td>Medium</td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td>Project Eta</td>
+                    <td>QA</td>
+                    <td>Integration</td>
+                    <td>Active</td>
+                    <td>2025-03-19</td>
+                    <td>High</td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td>Feature Theta</td>
+                    <td>Development</td>
+                    <td>Backend</td>
+                    <td>Review</td>
+                    <td>2025-03-17</td>
+                    <td>Medium</td>
+                </tr>
+                <tr>
+                    <td>9</td>
+                    <td>Bug Fix Iota</td>
+                    <td>QA</td>
+                    <td>Testing</td>
+                    <td>Completed</td>
+                    <td>2025-03-16</td>
+                    <td>Critical</td>
+                </tr>
+                <tr>
+                    <td>10</td>
+                    <td>Module Kappa</td>
+                    <td>Design</td>
+                    <td>UI/UX</td>
+                    <td>Active</td>
+                    <td>2025-03-14</td>
+                    <td>Low</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
