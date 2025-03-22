@@ -120,4 +120,29 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize secondary filters
     updateSecondaryFilters();
+
+    // Column toggle functionality
+    const toggleCategory = document.getElementById('toggle-category');
+    const toggleSubcategory = document.getElementById('toggle-subcategory');
+    
+    function toggleColumn(columnIndex, checkbox) {
+        const table = document.getElementById('data-table');
+        const headers = table.getElementsByTagName('th');
+        const rows = table.getElementsByTagName('tr');
+        
+        // Toggle header visibility
+        headers[columnIndex].classList.toggle('hide-column', !checkbox.checked);
+        
+        // Toggle cells visibility
+        for (let i = 0; i < rows.length; i++) {
+            const cells = rows[i].getElementsByTagName('td');
+            if (cells.length > 0) {
+                cells[columnIndex].classList.toggle('hide-column', !checkbox.checked);
+            }
+        }
+    }
+    
+    // Add event listeners for toggle switches
+    toggleCategory.addEventListener('change', (e) => toggleColumn(2, e.target));
+    toggleSubcategory.addEventListener('change', (e) => toggleColumn(3, e.target));
 });
