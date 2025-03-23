@@ -1,12 +1,20 @@
 document.addEventListener('DOMContentLoaded', function() {
     const table = document.getElementById('data-table');
     const rows = Array.from(table.getElementsByTagName('tr')).slice(1);
+    const clearFiltersBtn = document.getElementById('clear-filters');
     
-    // Store all category-subcategory relationships
+    // Store all category-subcategory relationships and counts
     const categoryMap = new Map();
+    const categoryCounts = new Map();
+    const subcategoryCounts = new Map();
+    
     rows.forEach(row => {
         const category = row.cells[2].textContent;
         const subcategory = row.cells[3].textContent;
+        
+        // Update category counts
+        categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+        subcategoryCounts.set(subcategory, (subcategoryCounts.get(subcategory) || 0) + 1);
         
         if (!categoryMap.has(category)) {
             categoryMap.set(category, new Set());
@@ -18,9 +26,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const primaryFilters = document.getElementById('primary-filters');
     const secondaryFilters = document.getElementById('secondary-filters');
     
-    // Create primary filter buttons
+    // Create primary filter buttons with counts
     Array.from(categoryMap.keys()).forEach(category => {
-        const button = createFilterButton(category, 'primary');
+        const button = createFilterButton(category, 'primary', categoryCounts.get(category));
         primaryFilters.appendChild(button);
     });
     
@@ -30,10 +38,20 @@ document.addEventListener('DOMContentLoaded', function() {
         secondary: new Set()
     };
     
-    function createFilterButton(text, filterType) {
+    function createFilterButton(text, filterType, count) {
         const button = document.createElement('button');
-        button.textContent = text;
         button.className = 'filter-btn';
+        
+        // Create text span and count span
+        const textSpan = document.createElement('span');
+        textSpan.textContent = text;
+        
+        const countSpan = document.createElement('span');
+        countSpan.className = 'count';
+        countSpan.textContent = ` (${count})`;
+        
+        button.appendChild(textSpan);
+        button.appendChild(countSpan);
         
         button.addEventListener('click', () => {
             if (filterType === 'primary') {
@@ -46,6 +64,22 @@ document.addEventListener('DOMContentLoaded', function() {
         return button;
     }
     
+    // Clear all filters functionality
+    clearFiltersBtn.addEventListener('click', () => {
+        // Remove active class from all filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Clear active filters
+        activeFilters.primary.clear();
+        activeFilters.secondary.clear();
+        
+        // Update secondary filters and table
+        updateSecondaryFilters();
+        applyFilters();
+    });
+
     function handlePrimaryFilter(button, category) {
         // Toggle active state
         button.classList.toggle('active');
@@ -86,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             allSubcategories.forEach(subcategory => {
-                const button = createFilterButton(subcategory, 'secondary');
+                const button = createFilterButton(subcategory, 'secondary', subcategoryCounts.get(subcategory));
                 secondaryFilters.appendChild(button);
             });
             return;
@@ -99,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         availableSubcategories.forEach(subcategory => {
-            const button = createFilterButton(subcategory, 'secondary');
+            const button = createFilterButton(subcategory, 'secondary', subcategoryCounts.get(subcategory));
             secondaryFilters.appendChild(button);
         });
     }

@@ -74,6 +74,35 @@ body {
     border-color: #333;
 }
 
+.filter-btn .count {
+    font-size: 0.9em;
+    color: #666;
+    margin-left: 4px;
+}
+
+.filter-btn.active .count {
+    color: #fff;
+}
+
+.filter-header {
+    text-align: right;
+    margin-bottom: 1.5rem;
+}
+
+.clear-filters-btn {
+    padding: 0.5rem 1rem;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.clear-filters-btn:hover {
+    background-color: #d32f2f;
+}
+
 /* Column toggle styles */
 .table-container {
     position: relative;
