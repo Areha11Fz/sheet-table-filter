@@ -212,8 +212,18 @@ th {
     font-weight: bold;
 }
 
+/* Add alternating row colors */
+tr:nth-child(even) {
+    background-color: #f8f8f8;
+}
+
+tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+/* Keep the hover effect but make it slightly different from the alternating colors */
 tr:hover {
-    background-color: #f9f9f9;
+    background-color: #f0f0f0;
 }
 
 /* Responsive design */
