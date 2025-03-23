@@ -210,4 +210,35 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add event listeners for toggle switches
     toggleCategory.addEventListener('change', (e) => toggleColumn(2, e.target));
     toggleSubcategory.addEventListener('change', (e) => toggleColumn(3, e.target));
+
+    // Settings menu functionality
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsMenu = document.getElementById('settings-menu');
+    
+    settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        settingsMenu.classList.toggle('active');
+    });
+    
+    // Close settings menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!settingsMenu.contains(e.target) && !settingsBtn.contains(e.target)) {
+            settingsMenu.classList.remove('active');
+        }
+    });
+
+    // Update table cells to accommodate settings column
+    function updateTableStructure() {
+        const rows = table.getElementsByTagName('tr');
+        Array.from(rows).forEach(row => {
+            if (row.cells.length === 7) { // Only add cell if it doesn't exist
+                const cell = document.createElement(row === rows[0] ? 'th' : 'td');
+                cell.className = 'settings-column';
+                row.appendChild(cell);
+            }
+        });
+    }
+    
+    // Initialize table structure
+    updateTableStructure();
 });

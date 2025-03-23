@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Filter Table</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -49,17 +50,22 @@
                 </select>
             </div>
         </div>
-        <div class="column-toggles">
-            <label class="switch">
-                <input type="checkbox" id="toggle-category" checked>
-                <span class="slider round"></span>
-                <span class="switch-label">Category Column</span>
-            </label>
-            <label class="switch">
-                <input type="checkbox" id="toggle-subcategory" checked>
-                <span class="slider round"></span>
-                <span class="switch-label">Subcategory Column</span>
-            </label>
+        <div class="settings-menu" id="settings-menu">
+            <div class="settings-content">
+                <h3>Column Visibility</h3>
+                <div class="column-toggles">
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-category" checked>
+                        <span class="slider round"></span>
+                        <span class="switch-label">Category Column</span>
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-subcategory" checked>
+                        <span class="slider round"></span>
+                        <span class="switch-label">Subcategory Column</span>
+                    </label>
+                </div>
+            </div>
         </div>
         <table id="data-table">
             <thead>
@@ -71,6 +77,11 @@
                     <th>Status</th>
                     <th>Date</th>
                     <th>Priority</th>
+                    <th class="settings-column">
+                        <button id="settings-btn" class="settings-btn">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </th>
                 </tr>
             </thead>
             <tbody>
