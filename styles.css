@@ -195,10 +195,52 @@ input:checked + .slider:before {
     overflow-x: auto;
 }
 
+/* Search styles */
+.search-container {
+    position: absolute;
+    top: 2rem;
+    left: 2rem;
+    right: 200px;
+    z-index: 1;
+}
+
+.search-wrapper {
+    display: flex;
+    gap: 1rem;
+    max-width: 600px;
+}
+
+#search-input {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+#search-input:focus {
+    outline: none;
+    border-color: #333;
+}
+
+#search-column {
+    padding: 0.5rem;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+}
+
+#search-column:focus {
+    outline: none;
+    border-color: #333;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 4rem;
+    margin-top: 5rem;
 }
 
 th, td {

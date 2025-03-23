@@ -138,8 +138,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    function applyFilters() {
+    // Search functionality
+    const searchInput = document.getElementById('search-input');
+    const searchColumn = document.getElementById('search-column');
+    
+    function performSearch() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedColumn = searchColumn.value;
+        
         rows.forEach(row => {
+            let text;
+            if (selectedColumn === 'all') {
+                // Search all columns
+                text = Array.from(row.cells)
+                    .map(cell => cell.textContent)
+                    .join(' ')
+                    .toLowerCase();
+            } else {
+                // Search specific column
+                text = row.cells[parseInt(selectedColumn)].textContent.toLowerCase();
+            }
+            
+            const matchesSearch = text.includes(searchTerm);
+            
+            // Combine search with existing filters
             const category = row.cells[2].textContent;
             const subcategory = row.cells[3].textContent;
             
@@ -148,8 +170,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const showSecondary = activeFilters.secondary.size === 0 || 
                                  activeFilters.secondary.has(subcategory);
             
-            row.style.display = showPrimary && showSecondary ? '' : 'none';
+            row.style.display = (matchesSearch && showPrimary && showSecondary) ? '' : 'none';
         });
+    }
+    
+    // Add search event listeners
+    searchInput.addEventListener('input', performSearch);
+    searchColumn.addEventListener('change', performSearch);
+    
+    // Update the applyFilters function to also reapply search
+    function applyFilters() {
+        performSearch(); // This will handle both search and filters
     }
     
     // Initialize secondary filters
