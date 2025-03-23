@@ -89,9 +89,14 @@ body {
     margin-bottom: 1.5rem;
 }
 
+.clear-filters-wrapper {
+    text-align: center;
+    margin-top: 1rem;
+}
+
 .clear-filters-btn {
     padding: 0.5rem 1rem;
-    background-color: #f44336;
+    background-color: #666;
     color: white;
     border: none;
     border-radius: 4px;
@@ -100,7 +105,7 @@ body {
 }
 
 .clear-filters-btn:hover {
-    background-color: #d32f2f;
+    background-color: #555;
 }
 
 /* Column toggle styles */
