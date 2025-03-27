@@ -269,6 +269,32 @@ tr:hover {
     background-color: #f0f0f0;
 }
 
+td {
+    cursor: pointer;
+    position: relative;
+}
+
+td.copied::after {
+    content: 'Copied!';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    animation: fadeOut 1s forwards;
+    white-space: nowrap;
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .navbar {

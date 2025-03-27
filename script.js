@@ -241,4 +241,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize table structure
     updateTableStructure();
+
+    // Add double-click to copy functionality
+    table.addEventListener('dblclick', (e) => {
+        const cell = e.target.closest('td');
+        if (!cell || cell.classList.contains('settings-column')) return;
+
+        const text = cell.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            // Show copy feedback
+            cell.classList.add('copied');
+            setTimeout(() => {
+                cell.classList.remove('copied');
+            }, 1000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+        });
+    });
 });
