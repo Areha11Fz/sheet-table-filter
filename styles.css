@@ -36,12 +36,58 @@ body {
 
 /* Filter styles */
 .filter-container {
-  padding: 2rem;
+  /* Removed padding */
   background-color: #f5f5f5;
   max-width: 1200px;
   margin: 2rem auto;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 2rem auto; /* Keep margin */
+  max-width: 1200px; /* Keep max-width */
+  border-radius: 8px; /* Keep border-radius */
+}
+
+.filter-container-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem; /* Add padding to header */
+  cursor: pointer; /* Make header clickable */
+  border-bottom: 1px solid #ddd; /* Separator line */
+}
+
+.filter-container-header h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #333;
+}
+
+.toggle-filters-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #555;
+  cursor: pointer;
+  padding: 0.2rem;
+  transition: transform 0.3s ease;
+}
+
+.filter-container.collapsed .toggle-filters-btn {
+  transform: rotate(180deg); /* Point down when collapsed */
+}
+
+.filter-content {
+  padding: 1rem 2rem 2rem 2rem; /* Add padding back to content area */
+  max-height: 1000px; /* Or a suitable large value */
+  overflow: hidden;
+  transition: max-height 0.5s ease-out, padding 0.5s ease-out;
+}
+
+.filter-container.collapsed .filter-content {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-top: none; /* Hide border when collapsed */
 }
 
 .filter-group {

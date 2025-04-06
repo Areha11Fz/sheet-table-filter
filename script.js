@@ -312,7 +312,33 @@ document.addEventListener('DOMContentLoaded', function () {
                 row.appendChild(cell);
             }
         });
+    } // <-- Add missing closing brace for updateTableStructure
+
+    // --- Filter Container Collapse/Expand ---
+    const filterContainer = document.getElementById('filter-container');
+    const toggleFiltersBtn = document.getElementById('toggle-filters-btn');
+    const filterContainerHeader = document.querySelector('.filter-container-header'); // Get header element
+
+    function toggleFilterCollapse() {
+        filterContainer.classList.toggle('collapsed');
+        const icon = toggleFiltersBtn.querySelector('i');
+        // Change icon based on collapsed state
+        if (filterContainer.classList.contains('collapsed')) {
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        } else {
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        }
     }
+
+    // Add listeners to both the button and the header area
+    toggleFiltersBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent header listener from firing too
+        toggleFilterCollapse();
+    });
+    filterContainerHeader.addEventListener('click', toggleFilterCollapse);
+
 
     // Initialize table structure
     updateTableStructure();
@@ -335,4 +361,4 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Failed to copy:', err);
         });
     });
-});
+}); // <-- Add missing closing }); for DOMContentLoaded

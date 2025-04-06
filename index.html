@@ -21,25 +21,34 @@
     </nav>
 
     <!-- Filter Section -->
-    <div class="filter-container">
-        <div id="primary-filters" class="filter-group">
-            <div class="filter-group-header">
-                <h3>Primary Filters</h3>
-                <button id="clear-primary-filters" class="clear-group-btn" title="Clear Primary Filters">Clear</button>
+    <div class="filter-container" id="filter-container">
+        <div class="filter-container-header">
+            <h2>Filters</h2>
+            <button id="toggle-filters-btn" class="toggle-filters-btn" title="Toggle Filters">
+                <i class="fas fa-chevron-up"></i> <!-- Default open state -->
+            </button>
+        </div>
+        <div class="filter-content" id="filter-content"> <!-- Wrapper for collapsible content -->
+            <div id="primary-filters" class="filter-group">
+                <div class="filter-group-header">
+                    <h3>Primary Filters</h3>
+                    <button id="clear-primary-filters" class="clear-group-btn"
+                        title="Clear Primary Filters">Clear</button>
+                </div>
+                <!-- Dynamically populated from column 2 -->
             </div>
-            <!-- Dynamically populated from column 2 -->
-        </div>
-        <div id="secondary-filters" class="filter-group">
-            <div class="filter-group-header">
-                <h3>Secondary Filters</h3>
-                <button id="clear-secondary-filters" class="clear-group-btn"
-                    title="Clear Secondary Filters">Clear</button>
+            <div id="secondary-filters" class="filter-group">
+                <div class="filter-group-header">
+                    <h3>Secondary Filters</h3>
+                    <button id="clear-secondary-filters" class="clear-group-btn"
+                        title="Clear Secondary Filters">Clear</button>
+                </div>
+                <!-- Dynamically populated from column 3 -->
             </div>
-            <!-- Dynamically populated from column 3 -->
-        </div>
-        <div class="clear-filters-wrapper">
-            <button id="clear-filters" class="clear-filters-btn">Clear All Filters</button>
-        </div>
+            <div class="clear-filters-wrapper">
+                <button id="clear-filters" class="clear-filters-btn">Clear All Filters</button>
+            </div>
+        </div> <!-- End filter-content wrapper -->
     </div>
 
     <!-- Table Section -->
