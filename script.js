@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const table = document.getElementById('data-table');
     const rows = Array.from(table.getElementsByTagName('tr')).slice(1);
     const clearFiltersBtn = document.getElementById('clear-filters');
+    const clearPrimaryBtn = document.getElementById('clear-primary-filters');
+    const clearSecondaryBtn = document.getElementById('clear-secondary-filters');
 
     // Store all category-subcategory relationships and counts
     const categoryMap = new Map();
@@ -80,6 +82,32 @@ document.addEventListener('DOMContentLoaded', function () {
         applyFilters();
     });
 
+    // Clear primary filters functionality
+    clearPrimaryBtn.addEventListener('click', () => {
+        // Remove active class from primary filter buttons
+        primaryFilters.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        // Clear active primary filters
+        activeFilters.primary.clear();
+        // Update secondary filters and table
+        updateSecondaryFilters();
+        applyFilters();
+    });
+
+    // Clear secondary filters functionality
+    clearSecondaryBtn.addEventListener('click', () => {
+        // Remove active class from secondary filter buttons
+        secondaryFilters.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        // Clear active secondary filters
+        activeFilters.secondary.clear();
+        // Apply filters to update table
+        applyFilters();
+    });
+
+
     function handlePrimaryFilter(button, category) {
         // Toggle active state
         button.classList.toggle('active');
@@ -108,9 +136,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateSecondaryFilters() {
-        // Clear existing secondary filters
-        secondaryFilters.innerHTML = '<h3>Secondary Filters</h3>';
-        activeFilters.secondary.clear();
+        // Clear existing secondary filters, keeping the header
+        const header = secondaryFilters.querySelector('.filter-group-header');
+        secondaryFilters.innerHTML = ''; // Clear all content
+        if (header) {
+            secondaryFilters.appendChild(header); // Re-add the header
+        } else {
+            // Fallback if header wasn't found (shouldn't happen with current HTML)
+            secondaryFilters.innerHTML = `
+                <div class="filter-group-header">
+                    <h3>Secondary Filters</h3>
+                    <button id="clear-secondary-filters" class="clear-group-btn" title="Clear Secondary Filters">Clear</button>
+                </div>`;
+        }
+        activeFilters.secondary.clear(); // Ensure secondary active filters are cleared
 
         // If no primary filters are selected, show all possible secondary filters
         if (activeFilters.primary.size === 0) {
