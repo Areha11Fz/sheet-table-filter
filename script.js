@@ -375,4 +375,23 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Failed to copy:', err);
         });
     });
-}); // <-- Add missing closing }); for DOMContentLoaded
+
+    // --- Hamburger Menu Toggle ---
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const navMenu = document.getElementById('nav-menu');
+
+    if (hamburgerBtn && navMenu) { // Check if elements exist
+        hamburgerBtn.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+        });
+
+        // Optional: Close menu when clicking outside on small screens
+        document.addEventListener('click', (e) => {
+            // Check if the menu is active and the click is outside
+            if (navMenu.classList.contains('active') && window.innerWidth <= 768 && !navMenu.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+                navMenu.classList.remove('active');
+            }
+        });
+    }
+
+}); // <-- Correct closing }); for DOMContentLoaded

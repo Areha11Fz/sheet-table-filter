@@ -34,6 +34,15 @@ body {
   color: #ddd;
 }
 
+.hamburger-btn {
+  display: none; /* Hidden by default */
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
 /* Filter styles */
 .filter-container {
   /* Removed padding */
@@ -379,17 +388,37 @@ td.copied::after {
 /* Responsive design */
 @media (max-width: 768px) {
   .navbar {
-    flex-direction: column;
-    text-align: center;
+    /* Keep flex-direction: row, but wrap items */
+    flex-wrap: wrap;
+    position: relative; /* Needed for absolute positioning of menu */
+  }
+
+  .hamburger-btn {
+    display: block; /* Show hamburger on small screens */
+    order: 1; /* Place it after the brand */
   }
 
   .nav-menu {
-    margin-top: 1rem;
+    display: none; /* Hide menu by default on small screens */
+    flex-direction: column;
+    width: 100%;
+    background-color: #444; /* Slightly different background */
+    position: absolute;
+    top: 100%; /* Position below navbar */
+    left: 0;
+    padding: 1rem 0;
+    order: 2; /* Ensure it appears below brand and hamburger */
+  }
+
+  .nav-menu.active {
+    display: flex; /* Show menu when active */
   }
 
   .nav-menu a {
-    display: block;
-    margin: 0.5rem 0;
+    /* display: block; */ /* Already flex column items */
+    margin: 0.75rem 1rem; /* Adjust spacing */
+    text-align: center;
+    width: auto; /* Reset width if needed */
   }
 }
 
