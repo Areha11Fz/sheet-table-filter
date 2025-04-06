@@ -318,19 +318,33 @@ document.addEventListener('DOMContentLoaded', function () {
     const filterContainer = document.getElementById('filter-container');
     const toggleFiltersBtn = document.getElementById('toggle-filters-btn');
     const filterContainerHeader = document.querySelector('.filter-container-header'); // Get header element
+    const filterStateKey = 'filterContainerCollapsed'; // Key for localStorage
 
-    function toggleFilterCollapse() {
-        filterContainer.classList.toggle('collapsed');
+    function setFilterState(isCollapsed) {
         const icon = toggleFiltersBtn.querySelector('i');
-        // Change icon based on collapsed state
-        if (filterContainer.classList.contains('collapsed')) {
+        if (isCollapsed) {
+            filterContainer.classList.add('collapsed');
             icon.classList.remove('fa-chevron-up');
             icon.classList.add('fa-chevron-down');
+            localStorage.setItem(filterStateKey, 'true');
         } else {
+            filterContainer.classList.remove('collapsed');
             icon.classList.remove('fa-chevron-down');
             icon.classList.add('fa-chevron-up');
+            localStorage.setItem(filterStateKey, 'false');
         }
     }
+
+    function toggleFilterCollapse() {
+        const isCurrentlyCollapsed = filterContainer.classList.contains('collapsed');
+        setFilterState(!isCurrentlyCollapsed); // Toggle the state
+    }
+
+    // Initial state setup on load
+    const savedState = localStorage.getItem(filterStateKey);
+    // Default to open (not collapsed) if no saved state or saved as 'false'
+    setFilterState(savedState === 'true');
+
 
     // Add listeners to both the button and the header area
     toggleFiltersBtn.addEventListener('click', (e) => {
