@@ -269,21 +269,24 @@ input:checked + .slider:before {
 
 /* Search styles */
 .search-container {
-  position: absolute;
-  top: 2rem;
-  left: 2rem;
-  right: 200px;
-  z-index: 1;
+  /* Removed absolute positioning */
+  padding: 0 2rem 1.5rem 2rem; /* Add padding (top 0, bottom 1.5rem) */
+  max-width: 1200px; /* Match filter container width */
+  margin: 0 auto; /* Center the container */
 }
 
 .search-wrapper {
   display: flex;
   gap: 1rem;
-  max-width: 600px;
+  max-width: 600px; /* Keep max-width for larger screens */
+  /* Removed min-width: 300px; */
+  width: 100%; /* Allow shrinking */
+  margin: 0 auto; /* Center the wrapper within the container */
 }
 
 #search-input {
   flex: 1;
+  min-width: 0; /* Allow input to shrink below its default minimum */
   padding: 0.5rem 1rem;
   border: 2px solid #ddd;
   border-radius: 4px;
@@ -312,7 +315,7 @@ input:checked + .slider:before {
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 5rem;
+  /* Removed margin-top: 5rem; */
 }
 
 th,

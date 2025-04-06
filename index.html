@@ -51,23 +51,26 @@
         </div> <!-- End filter-content wrapper -->
     </div>
 
+    <!-- Search Section -->
+    <div class="search-container">
+        <div class="search-wrapper">
+            <input type="text" id="search-input" placeholder="Search...">
+            <select id="search-column">
+                <option value="all">All Columns</option>
+                <option value="0">ID</option>
+                <option value="1">Name</option>
+                <option value="2">Category</option>
+                <option value="3">Subcategory</option>
+                <option value="4">Status</option>
+                <option value="5">Date</option>
+                <option value="6">Priority</option>
+            </select>
+        </div>
+    </div>
+
     <!-- Table Section -->
     <div class="table-container">
-        <div class="search-container">
-            <div class="search-wrapper">
-                <input type="text" id="search-input" placeholder="Search...">
-                <select id="search-column">
-                    <option value="all">All Columns</option>
-                    <option value="0">ID</option>
-                    <option value="1">Name</option>
-                    <option value="2">Category</option>
-                    <option value="3">Subcategory</option>
-                    <option value="4">Status</option>
-                    <option value="5">Date</option>
-                    <option value="6">Priority</option>
-                </select>
-            </div>
-        </div>
+        <!-- Search container moved out -->
         <div class="settings-menu" id="settings-menu">
             <div class="settings-content">
                 <h3>Column Visibility</h3>
