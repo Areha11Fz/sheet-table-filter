@@ -58,12 +58,26 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function parseCSV(csvText) {
-        const lines = csvText.trim().split('\n');
-        return lines.map(line => {
-            // Basic CSV parsing (doesn't handle quoted commas perfectly)
-            return line.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')); // Trim quotes
-        });
+        const lines = csvText.trim().split(/\r?\n/); // Split lines, handle different line endings
+        const result = [];
+        // Regex to handle quoted fields, including escaped quotes ("")
+        const regex = /,(?=(?:[^"]*"[^"]*")*[^"]*$)/;
+
+        for (const line of lines) {
+            const fields = line.split(regex).map(field => {
+                let value = field.trim();
+                // Remove surrounding quotes if they exist
+                if (value.startsWith('"') && value.endsWith('"')) {
+                    value = value.substring(1, value.length - 1);
+                }
+                // Replace escaped double quotes ("") with a single double quote (")
+                return value.replace(/""/g, '"');
+            });
+            result.push(fields);
+        }
+        return result;
     }
+
 
     function populateTable(data) {
         tableHead.innerHTML = ''; // Clear existing header
