@@ -1,6 +1,10 @@
 document.addEventListener('DOMContentLoaded', function () {
     const table = document.getElementById('data-table');
-    const rows = Array.from(table.getElementsByTagName('tr')).slice(1);
+    const tableHead = table.querySelector('thead');
+    const tableBody = table.querySelector('tbody');
+    const loadingIndicator = document.getElementById('table-loading-indicator');
+    let rows = []; // Will be populated after fetch
+
     const clearFiltersBtn = document.getElementById('clear-filters');
     const dynamicFilterGroupsContainer = document.getElementById('dynamic-filter-groups');
     const filterSetupPrompt = document.getElementById('filter-setup-prompt');
@@ -15,8 +19,117 @@ document.addEventListener('DOMContentLoaded', function () {
     const filterSettingsKey = 'dynamicFilterColumns'; // localStorage key for selected columns
     let configuredFilterColumns = []; // Array of { index: number, name: string }
     let activeFilters = {}; // Object to store active filters, e.g., { columnIndex: Set(['value1', 'value2']) }
+    let tableHeaders = []; // Will be populated after fetch
 
-    // --- Filter Settings Management ---
+    // --- Google Sheet Loading ---
+    const sheetId = '1WcqNK4kQ-As2kcolqpwzJK-KtObRzGrScSNCum8Q5Ds';
+    const sheetGid = '0'; // Or the specific GID if not the first sheet
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${sheetGid}`;
+
+    async function loadSheetData() {
+        loadingIndicator.style.display = 'block';
+        table.style.display = 'none';
+        try {
+            const response = await fetch(sheetUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const csvData = await response.text();
+            const parsedData = parseCSV(csvData);
+
+            if (parsedData.length > 0) {
+                populateTable(parsedData);
+                // Initialize everything else *after* table is populated
+                initializePostDataLoad();
+            } else {
+                console.error("No data parsed from CSV.");
+                loadingIndicator.textContent = 'Failed to load or parse data.';
+            }
+
+        } catch (error) {
+            console.error('Error loading or parsing sheet data:', error);
+            loadingIndicator.textContent = 'Error loading data. Please check the console.';
+        } finally {
+            // Hide loading indicator only if table was successfully populated
+            if (table.style.display !== 'none') {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+    }
+
+    function parseCSV(csvText) {
+        const lines = csvText.trim().split('\n');
+        return lines.map(line => {
+            // Basic CSV parsing (doesn't handle quoted commas perfectly)
+            return line.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')); // Trim quotes
+        });
+    }
+
+    function populateTable(data) {
+        tableHead.innerHTML = ''; // Clear existing header
+        tableBody.innerHTML = ''; // Clear existing body
+
+        if (data.length === 0) return;
+
+        // Create Header Row
+        const headerRow = tableHead.insertRow();
+        data[0].forEach(headerText => {
+            const th = document.createElement('th');
+            th.textContent = headerText;
+            headerRow.appendChild(th);
+        });
+        // Add settings column header
+        const settingsTh = document.createElement('th');
+        settingsTh.className = 'settings-column';
+        settingsTh.innerHTML = `<button id="settings-btn" class="settings-btn"><i class="fas fa-cog"></i></button>`;
+        headerRow.appendChild(settingsTh);
+
+        // Populate Body Rows
+        data.slice(1).forEach(rowData => {
+            const row = tableBody.insertRow();
+            rowData.forEach(cellData => {
+                const cell = row.insertCell();
+                cell.textContent = cellData;
+            });
+            // Add empty cell for settings column
+            const settingsTd = row.insertCell();
+            settingsTd.className = 'settings-column';
+        });
+
+        // Update global rows variable AFTER populating
+        rows = Array.from(tableBody.getElementsByTagName('tr'));
+        // Update global tableHeaders AFTER populating
+        tableHeaders = table ? Array.from(table.querySelectorAll('thead th')) : [];
+
+        table.style.display = ''; // Show table now
+    }
+
+
+    // --- Initialization Function (Called after data load) ---
+    function initializePostDataLoad() {
+        // Initialize Filter Settings & UI (Loads from localStorage)
+        loadFilterSettings(); // This now depends on 'rows' being populated
+
+        // Initialize column toggles (after table structure is potentially updated)
+        if (tableHeaders.length > 0) { // Only run if headers were found
+            createColumnToggles(); // This depends on tableHeaders
+        }
+
+        // Initialize search column options
+        updateSearchColumnOptions();
+
+        // Apply initial filters/search if needed (optional)
+        applyFilters();
+
+        // Re-attach listeners that might have been lost if elements were regenerated
+        // (e.g., settings button listener if header was fully regenerated)
+        attachSettingsMenuListeners();
+        attachDoubleClickCopyListener();
+        attachHamburgerListener();
+        // Note: Filter button listeners are added during generation
+    }
+
+    // --- Filter Settings Management --- (Keep existing functions loadFilterSettings, saveFilterSettings)
 
     function loadFilterSettings() {
         const savedSettings = localStorage.getItem(filterSettingsKey);
@@ -46,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function () {
         applyFilters(); // Re-apply filters with new settings
     }
 
-    // --- Filter Generation ---
+    // --- Filter Generation --- (Keep existing functions generateFilterGroup, createFilterButton)
 
     function generateFilterGroup(columnIndex, columnName) {
         const uniqueValues = new Map(); // Map<value, count>
@@ -121,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return button;
     }
 
-    // --- Filter Logic ---
+    // --- Filter Logic --- (Keep existing functions handleFilterClick, clearGroupFilters, clearAllFilters)
 
     function handleFilterClick(button, columnIndex, value) {
         button.classList.toggle('active');
@@ -163,11 +276,24 @@ document.addEventListener('DOMContentLoaded', function () {
     clearFiltersBtn.addEventListener('click', clearAllFilters);
 
 
-    // --- Search Functionality (Modified for Dynamic Filters) ---
+    // --- Search Functionality ---
     const searchInput = document.getElementById('search-input');
-    const searchColumn = document.getElementById('search-column'); // Keep search column selector for now
+    const searchColumn = document.getElementById('search-column');
 
-    function applyFilters() { // Renamed from performSearch, now handles only filtering
+    function updateSearchColumnOptions() {
+        searchColumn.innerHTML = '<option value="all">All Columns</option>'; // Reset
+        tableHeaders.forEach((header, index) => {
+            // Skip the last column (Settings)
+            if (index === tableHeaders.length - 1) return;
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = header.textContent.trim();
+            searchColumn.appendChild(option);
+        });
+    }
+
+
+    function applyFilters() { // Handles both search and dynamic filters
         const searchTerm = searchInput.value.toLowerCase();
         const selectedSearchColumnIndex = searchColumn.value; // 'all' or column index string
 
@@ -210,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function () {
     searchColumn.addEventListener('change', applyFilters);
 
 
-    // --- UI Management ---
+    // --- UI Management --- (Keep existing functions initializeFilterUI, showColumnSelector)
 
     function initializeFilterUI() {
         // Clear previous dynamic groups
@@ -299,10 +425,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
 
-    // --- Dynamic Column Visibility (Table Columns) ---
+    // --- Dynamic Column Visibility (Table Columns) --- (Keep existing functions loadColumnVisibilityState, toggleColumn, createColumnToggles)
     const columnTogglesContainer = document.querySelector('.settings-menu .column-toggles');
-    // Ensure tableHeaders is defined *after* the table element is known
-    const tableHeaders = table ? Array.from(table.querySelectorAll('thead th')) : [];
     const columnVisibilityKey = 'columnVisibilityState'; // localStorage key
     let columnVisibilityState = {}; // Object like { columnIndex: boolean (isVisible) }
 
@@ -396,22 +520,22 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Settings menu functionality
-    const settingsBtn = document.getElementById('settings-btn');
     const settingsMenu = document.getElementById('settings-menu');
-
-    settingsBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        settingsMenu.classList.toggle('active');
-    });
-
-    // Close settings menu when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!settingsMenu.contains(e.target) && !settingsBtn.contains(e.target)) {
-            settingsMenu.classList.remove('active');
+    // Need to re-attach listener after header generation
+    function attachSettingsMenuListeners() {
+        const settingsBtn = document.getElementById('settings-btn'); // Get potentially new button
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                settingsMenu.classList.toggle('active');
+            });
         }
-    });
+        // Close settings menu when clicking outside (keep existing listener)
+        // document.addEventListener('click', (e) => { ... }); // Already exists below
+    }
 
-    // Update table cells to accommodate settings column
+
+    // Update table cells to accommodate settings column (Keep existing function)
     function updateTableStructure() {
         const rows = table.getElementsByTagName('tr');
         Array.from(rows).forEach(row => {
@@ -423,7 +547,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     } // <-- Add missing closing brace for updateTableStructure
 
-    // --- Filter Container Collapse/Expand ---
+    // --- Filter Container Collapse/Expand --- (Keep existing functions setFilterState, toggleFilterCollapse and listeners)
     const filterContainer = document.getElementById('filter-container');
     const toggleFiltersBtn = document.getElementById('toggle-filters-btn');
     const filterContainerHeader = document.querySelector('.filter-container-header'); // Get header element
@@ -463,51 +587,56 @@ document.addEventListener('DOMContentLoaded', function () {
     filterContainerHeader.addEventListener('click', toggleFilterCollapse);
 
 
-    // Initialize table structure (ensure it runs before filter init)
-    updateTableStructure();
+    // Add double-click to copy functionality (ensure table exists)
+    function attachDoubleClickCopyListener() {
+        table.addEventListener('dblclick', (e) => {
+            const cell = e.target.closest('td');
+            if (!cell || cell.classList.contains('settings-column')) return;
 
-    // Initialize Filter Settings & UI (Loads from localStorage)
-    loadFilterSettings();
-
-    // Initialize column toggles (after table structure is potentially updated)
-    if (tableHeaders.length > 0) { // Only run if headers were found
-        createColumnToggles();
+            const text = cell.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                // Show copy feedback
+                cell.classList.add('copied');
+                setTimeout(() => {
+                    cell.classList.remove('copied');
+                }, 1000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        });
     }
 
-
-    // Add double-click to copy functionality (ensure table exists)
-    table.addEventListener('dblclick', (e) => {
-        const cell = e.target.closest('td');
-        if (!cell || cell.classList.contains('settings-column')) return;
-
-        const text = cell.textContent;
-        navigator.clipboard.writeText(text).then(() => {
-            // Show copy feedback
-            cell.classList.add('copied');
-            setTimeout(() => {
-                cell.classList.remove('copied');
-            }, 1000);
-        }).catch(err => {
-            console.error('Failed to copy:', err);
-        });
-    });
 
     // --- Hamburger Menu Toggle ---
-    const hamburgerBtn = document.getElementById('hamburger-btn');
-    const navMenu = document.getElementById('nav-menu');
+    function attachHamburgerListener() {
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const navMenu = document.getElementById('nav-menu');
 
-    if (hamburgerBtn && navMenu) { // Check if elements exist
-        hamburgerBtn.addEventListener('click', () => {
-            navMenu.classList.toggle('active');
-        });
-
-        // Optional: Close menu when clicking outside on small screens
-        document.addEventListener('click', (e) => {
-            // Check if the menu is active and the click is outside
-            if (navMenu.classList.contains('active') && window.innerWidth <= 768 && !navMenu.contains(e.target) && !hamburgerBtn.contains(e.target)) {
-                navMenu.classList.remove('active');
-            }
-        });
+        if (hamburgerBtn && navMenu) { // Check if elements exist
+            hamburgerBtn.addEventListener('click', () => {
+                navMenu.classList.toggle('active');
+            });
+            // Keep the close on outside click listener attached to document
+        }
     }
+
+    // Close menus (settings, hamburger) when clicking outside
+    document.addEventListener('click', (e) => {
+        // Close settings menu
+        const settingsBtn = document.getElementById('settings-btn'); // Need to get it again
+        if (settingsMenu && settingsBtn && !settingsMenu.contains(e.target) && !settingsBtn.contains(e.target)) {
+            settingsMenu.classList.remove('active');
+        }
+        // Close hamburger menu
+        const hamburgerBtn = document.getElementById('hamburger-btn'); // Need to get it again
+        const navMenu = document.getElementById('nav-menu'); // Need to get it again
+        if (navMenu && hamburgerBtn && navMenu.classList.contains('active') && window.innerWidth <= 768 && !navMenu.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+            navMenu.classList.remove('active');
+        }
+    });
+
+
+    // --- Initial Load ---
+    loadSheetData(); // Start the process by loading data
 
 }); // <-- Correct closing }); for DOMContentLoaded

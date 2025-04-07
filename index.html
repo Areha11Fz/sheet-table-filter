@@ -93,114 +93,14 @@
                 </div>
             </div>
         </div>
-        <table id="data-table">
+        <div id="table-loading-indicator" style="text-align: center; padding: 2rem; display: none;">Loading table
+            data...</div>
+        <table id="data-table" style="display: none;"> <!-- Hide table initially -->
             <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Category</th>
-                    <th>Subcategory</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th>Priority</th>
-                    <th class="settings-column">
-                        <button id="settings-btn" class="settings-btn">
-                            <i class="fas fa-cog"></i>
-                        </button>
-                    </th>
-                </tr>
+                <!-- Header row will be generated dynamically -->
             </thead>
             <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>Project Alpha</td>
-                    <td>Development</td>
-                    <td>Frontend</td>
-                    <td>Active</td>
-                    <td>2025-03-15</td>
-                    <td>High</td>
-                </tr>
-                <tr>
-                    <td>2</td>
-                    <td>Task Beta</td>
-                    <td>Design</td>
-                    <td>UI/UX</td>
-                    <td>Pending</td>
-                    <td>2025-03-18</td>
-                    <td>Medium</td>
-                </tr>
-                <tr>
-                    <td>3</td>
-                    <td>Feature Gamma</td>
-                    <td>Development</td>
-                    <td>Backend</td>
-                    <td>Completed</td>
-                    <td>2025-03-10</td>
-                    <td>High</td>
-                </tr>
-                <tr>
-                    <td>4</td>
-                    <td>Bug Fix Delta</td>
-                    <td>QA</td>
-                    <td>Testing</td>
-                    <td>Active</td>
-                    <td>2025-03-20</td>
-                    <td>Critical</td>
-                </tr>
-                <tr>
-                    <td>5</td>
-                    <td>Module Epsilon</td>
-                    <td>Development</td>
-                    <td>Frontend</td>
-                    <td>Review</td>
-                    <td>2025-03-21</td>
-                    <td>Low</td>
-                </tr>
-                <tr>
-                    <td>6</td>
-                    <td>Task Zeta</td>
-                    <td>Design</td>
-                    <td>Graphics</td>
-                    <td>Pending</td>
-                    <td>2025-03-22</td>
-                    <td>Medium</td>
-                </tr>
-                <tr>
-                    <td>7</td>
-                    <td>Project Eta</td>
-                    <td>QA</td>
-                    <td>Integration</td>
-                    <td>Active</td>
-                    <td>2025-03-19</td>
-                    <td>High</td>
-                </tr>
-                <tr>
-                    <td>8</td>
-                    <td>Feature Theta</td>
-                    <td>Development</td>
-                    <td>Backend</td>
-                    <td>Review</td>
-                    <td>2025-03-17</td>
-                    <td>Medium</td>
-                </tr>
-                <tr>
-                    <td>9</td>
-                    <td>Bug Fix Iota</td>
-                    <td>QA</td>
-                    <td>Testing</td>
-                    <td>Completed</td>
-                    <td>2025-03-16</td>
-                    <td>Critical</td>
-                </tr>
-                <tr>
-                    <td>10</td>
-                    <td>Module Kappa</td>
-                    <td>Design</td>
-                    <td>UI/UX</td>
-                    <td>Active</td>
-                    <td>2025-03-14</td>
-                    <td>Low</td>
-                </tr>
+                <!-- Table rows will be generated dynamically -->
             </tbody>
         </table>
     </div>
