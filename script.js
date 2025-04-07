@@ -2,51 +2,105 @@ document.addEventListener('DOMContentLoaded', function () {
     const table = document.getElementById('data-table');
     const rows = Array.from(table.getElementsByTagName('tr')).slice(1);
     const clearFiltersBtn = document.getElementById('clear-filters');
-    const clearPrimaryBtn = document.getElementById('clear-primary-filters');
-    const clearSecondaryBtn = document.getElementById('clear-secondary-filters');
+    const dynamicFilterGroupsContainer = document.getElementById('dynamic-filter-groups');
+    const filterSetupPrompt = document.getElementById('filter-setup-prompt');
+    const setupFiltersBtn = document.getElementById('setup-filters-btn');
+    const filterColumnSelector = document.getElementById('filter-column-selector');
+    const columnCheckboxesContainer = document.getElementById('column-checkboxes');
+    const saveFilterSettingsBtn = document.getElementById('save-filter-settings-btn');
+    const cancelFilterSettingsBtn = document.getElementById('cancel-filter-settings-btn');
+    const filterSettingsBtn = document.getElementById('filter-settings-btn');
+    const clearFiltersWrapper = document.getElementById('clear-filters-wrapper');
 
-    // Store all category-subcategory relationships and counts
-    const categoryMap = new Map();
-    const categoryCounts = new Map();
-    const subcategoryCounts = new Map();
+    const filterSettingsKey = 'dynamicFilterColumns'; // localStorage key for selected columns
+    let configuredFilterColumns = []; // Array of { index: number, name: string }
+    let activeFilters = {}; // Object to store active filters, e.g., { columnIndex: Set(['value1', 'value2']) }
 
-    rows.forEach(row => {
-        const category = row.cells[2].textContent;
-        const subcategory = row.cells[3].textContent;
+    // --- Filter Settings Management ---
 
-        // Update category counts
-        categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
-        subcategoryCounts.set(subcategory, (subcategoryCounts.get(subcategory) || 0) + 1);
-
-        if (!categoryMap.has(category)) {
-            categoryMap.set(category, new Set());
+    function loadFilterSettings() {
+        const savedSettings = localStorage.getItem(filterSettingsKey);
+        if (savedSettings) {
+            try {
+                configuredFilterColumns = JSON.parse(savedSettings);
+                // Basic validation (ensure it's an array of objects with index/name)
+                if (!Array.isArray(configuredFilterColumns) || !configuredFilterColumns.every(col => typeof col === 'object' && 'index' in col && 'name' in col)) {
+                    configuredFilterColumns = [];
+                    localStorage.removeItem(filterSettingsKey); // Clear invalid data
+                }
+            } catch (e) {
+                console.error("Error parsing filter settings from localStorage", e);
+                configuredFilterColumns = [];
+                localStorage.removeItem(filterSettingsKey);
+            }
+        } else {
+            configuredFilterColumns = [];
         }
-        categoryMap.get(category).add(subcategory);
-    });
+        initializeFilterUI();
+    }
 
-    // Create primary filter buttons
-    const primaryFilters = document.getElementById('primary-filters');
-    const secondaryFilters = document.getElementById('secondary-filters');
+    function saveFilterSettings(selectedColumns) {
+        configuredFilterColumns = selectedColumns; // selectedColumns should be array of { index: number, name: string }
+        localStorage.setItem(filterSettingsKey, JSON.stringify(configuredFilterColumns));
+        initializeFilterUI(); // Re-initialize UI after saving
+        applyFilters(); // Re-apply filters with new settings
+    }
 
-    // Create primary filter buttons with counts
-    Array.from(categoryMap.keys()).forEach(category => {
-        const button = createFilterButton(category, 'primary', categoryCounts.get(category));
-        primaryFilters.appendChild(button);
-    });
+    // --- Filter Generation ---
 
-    // Track active filters
-    const activeFilters = {
-        primary: new Set(),
-        secondary: new Set()
-    };
+    function generateFilterGroup(columnIndex, columnName) {
+        const uniqueValues = new Map(); // Map<value, count>
+        rows.forEach(row => {
+            if (row.cells[columnIndex]) {
+                const value = row.cells[columnIndex].textContent.trim();
+                if (value) { // Ignore empty values
+                    uniqueValues.set(value, (uniqueValues.get(value) || 0) + 1);
+                }
+            }
+        });
 
-    function createFilterButton(text, filterType, count) {
+        if (uniqueValues.size === 0) return; // Don't generate group if no values found
+
+        const filterGroup = document.createElement('div');
+        filterGroup.className = 'filter-group';
+        filterGroup.dataset.columnIndex = columnIndex;
+
+        const header = document.createElement('div');
+        header.className = 'filter-group-header';
+
+        const title = document.createElement('h3');
+        title.textContent = columnName;
+
+        const clearBtn = document.createElement('button');
+        clearBtn.className = 'clear-group-btn';
+        clearBtn.title = `Clear ${columnName} Filters`;
+        clearBtn.textContent = 'Clear';
+        clearBtn.addEventListener('click', () => {
+            clearGroupFilters(columnIndex);
+        });
+
+        header.appendChild(title);
+        header.appendChild(clearBtn);
+        filterGroup.appendChild(header);
+
+        // Sort values alphabetically for consistent order
+        Array.from(uniqueValues.keys()).sort().forEach(value => {
+            const count = uniqueValues.get(value);
+            const button = createFilterButton(value, columnIndex, count);
+            filterGroup.appendChild(button);
+        });
+
+        dynamicFilterGroupsContainer.appendChild(filterGroup);
+    }
+
+    function createFilterButton(value, columnIndex, count) {
         const button = document.createElement('button');
         button.className = 'filter-btn';
+        button.dataset.columnIndex = columnIndex;
+        button.dataset.value = value;
 
-        // Create text span and count span
         const textSpan = document.createElement('span');
-        textSpan.textContent = text;
+        textSpan.textContent = value;
 
         const countSpan = document.createElement('span');
         countSpan.className = 'count';
@@ -55,186 +109,205 @@ document.addEventListener('DOMContentLoaded', function () {
         button.appendChild(textSpan);
         button.appendChild(countSpan);
 
+        // Check if this filter is currently active
+        if (activeFilters[columnIndex] && activeFilters[columnIndex].has(value)) {
+            button.classList.add('active');
+        }
+
         button.addEventListener('click', () => {
-            if (filterType === 'primary') {
-                handlePrimaryFilter(button, text);
-            } else {
-                handleSecondaryFilter(button, text);
-            }
+            handleFilterClick(button, columnIndex, value);
         });
 
         return button;
     }
 
-    // Clear all filters functionality
-    clearFiltersBtn.addEventListener('click', () => {
-        // Remove active class from all filter buttons
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
+    // --- Filter Logic ---
 
-        // Clear active filters
-        activeFilters.primary.clear();
-        activeFilters.secondary.clear();
-
-        // Update secondary filters and table
-        updateSecondaryFilters();
-        applyFilters();
-    });
-
-    // Clear primary filters functionality
-    clearPrimaryBtn.addEventListener('click', () => {
-        // Remove active class from primary filter buttons
-        primaryFilters.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        // Clear active primary filters
-        activeFilters.primary.clear();
-        // Update secondary filters and table
-        updateSecondaryFilters();
-        applyFilters();
-    });
-
-    // Clear secondary filters functionality
-    clearSecondaryBtn.addEventListener('click', () => {
-        // Remove active class from secondary filter buttons
-        secondaryFilters.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        // Clear active secondary filters
-        activeFilters.secondary.clear();
-        // Apply filters to update table
-        applyFilters();
-    });
-
-
-    function handlePrimaryFilter(button, category) {
-        // Toggle active state
+    function handleFilterClick(button, columnIndex, value) {
         button.classList.toggle('active');
 
-        if (button.classList.contains('active')) {
-            activeFilters.primary.add(category);
-        } else {
-            activeFilters.primary.delete(category);
+        if (!activeFilters[columnIndex]) {
+            activeFilters[columnIndex] = new Set();
         }
 
-        // Update secondary filters
-        updateSecondaryFilters();
+        if (button.classList.contains('active')) {
+            activeFilters[columnIndex].add(value);
+        } else {
+            activeFilters[columnIndex].delete(value);
+            if (activeFilters[columnIndex].size === 0) {
+                delete activeFilters[columnIndex]; // Remove empty set
+            }
+        }
         applyFilters();
     }
 
-    function handleSecondaryFilter(button, subcategory) {
-        button.classList.toggle('active');
-
-        if (button.classList.contains('active')) {
-            activeFilters.secondary.add(subcategory);
-        } else {
-            activeFilters.secondary.delete(subcategory);
-        }
-
+    function clearGroupFilters(columnIndex) {
+        delete activeFilters[columnIndex]; // Remove filters for this column
+        // Deactivate buttons visually
+        dynamicFilterGroupsContainer.querySelectorAll(`.filter-group[data-column-index="${columnIndex}"] .filter-btn.active`).forEach(btn => {
+            btn.classList.remove('active');
+        });
         applyFilters();
     }
 
-    function updateSecondaryFilters() {
-        // Clear existing secondary filters, keeping the header
-        const header = secondaryFilters.querySelector('.filter-group-header');
-        secondaryFilters.innerHTML = ''; // Clear all content
-        if (header) {
-            secondaryFilters.appendChild(header); // Re-add the header
-        } else {
-            // Fallback if header wasn't found (shouldn't happen with current HTML)
-            secondaryFilters.innerHTML = `
-                <div class="filter-group-header">
-                    <h3>Secondary Filters</h3>
-                    <button id="clear-secondary-filters" class="clear-group-btn" title="Clear Secondary Filters">Clear</button>
-                </div>`;
-        }
-        activeFilters.secondary.clear(); // Ensure secondary active filters are cleared
-
-        // If no primary filters are selected, show all possible secondary filters
-        if (activeFilters.primary.size === 0) {
-            const allSubcategories = new Set();
-            categoryMap.forEach(subcategories => {
-                subcategories.forEach(sub => allSubcategories.add(sub));
-            });
-
-            allSubcategories.forEach(subcategory => {
-                const button = createFilterButton(subcategory, 'secondary', subcategoryCounts.get(subcategory));
-                secondaryFilters.appendChild(button);
-            });
-            return;
-        }
-
-        // Show only secondary filters that match active primary filters
-        const availableSubcategories = new Set();
-        activeFilters.primary.forEach(category => {
-            categoryMap.get(category).forEach(sub => availableSubcategories.add(sub));
+    function clearAllFilters() {
+        activeFilters = {}; // Clear all active filters
+        // Deactivate all filter buttons visually
+        dynamicFilterGroupsContainer.querySelectorAll('.filter-btn.active').forEach(btn => {
+            btn.classList.remove('active');
         });
-
-        availableSubcategories.forEach(subcategory => {
-            const button = createFilterButton(subcategory, 'secondary', subcategoryCounts.get(subcategory));
-            secondaryFilters.appendChild(button);
-        });
+        applyFilters();
     }
 
-    // Search functionality
+    // Add event listener to the main clear button
+    clearFiltersBtn.addEventListener('click', clearAllFilters);
+
+
+    // --- Search Functionality (Modified for Dynamic Filters) ---
     const searchInput = document.getElementById('search-input');
-    const searchColumn = document.getElementById('search-column');
+    const searchColumn = document.getElementById('search-column'); // Keep search column selector for now
 
-    function performSearch() {
+    function applyFilters() { // Renamed from performSearch, now handles only filtering
         const searchTerm = searchInput.value.toLowerCase();
-        const selectedColumn = searchColumn.value;
+        const selectedSearchColumnIndex = searchColumn.value; // 'all' or column index string
 
         rows.forEach(row => {
-            let text;
-            if (selectedColumn === 'all') {
-                // Search all columns
-                text = Array.from(row.cells)
-                    .map(cell => cell.textContent)
-                    .join(' ')
-                    .toLowerCase();
-            } else {
-                // Search specific column
-                text = row.cells[parseInt(selectedColumn)].textContent.toLowerCase();
+            let matchesSearch = true;
+            // Apply search filter
+            if (searchTerm) {
+                let textToSearch;
+                if (selectedSearchColumnIndex === 'all') {
+                    textToSearch = Array.from(row.cells)
+                        .map(cell => cell.textContent)
+                        .join(' ')
+                        .toLowerCase();
+                } else {
+                    const cellIndex = parseInt(selectedSearchColumnIndex);
+                    textToSearch = row.cells[cellIndex] ? row.cells[cellIndex].textContent.toLowerCase() : '';
+                }
+                matchesSearch = textToSearch.includes(searchTerm);
             }
 
-            const matchesSearch = text.includes(searchTerm);
+            // Apply dynamic filters
+            let matchesAllActiveFilters = true;
+            for (const columnIndex in activeFilters) {
+                if (activeFilters[columnIndex].size > 0) { // Only check if filters are active for this column
+                    const cellValue = row.cells[columnIndex] ? row.cells[columnIndex].textContent.trim() : '';
+                    if (!activeFilters[columnIndex].has(cellValue)) {
+                        matchesAllActiveFilters = false;
+                        break; // No need to check other filter groups for this row
+                    }
+                }
+            }
 
-            // Combine search with existing filters
-            const category = row.cells[2].textContent;
-            const subcategory = row.cells[3].textContent;
-
-            const showPrimary = activeFilters.primary.size === 0 ||
-                activeFilters.primary.has(category);
-            const showSecondary = activeFilters.secondary.size === 0 ||
-                activeFilters.secondary.has(subcategory);
-
-            row.style.display = (matchesSearch && showPrimary && showSecondary) ? '' : 'none';
+            // Show row only if it matches search AND all active filters
+            row.style.display = (matchesSearch && matchesAllActiveFilters) ? '' : 'none';
         });
     }
 
     // Add search event listeners
-    searchInput.addEventListener('input', performSearch);
-    searchColumn.addEventListener('change', performSearch);
+    searchInput.addEventListener('input', applyFilters);
+    searchColumn.addEventListener('change', applyFilters);
 
-    // Update the applyFilters function to also reapply search
-    function applyFilters() {
-        performSearch(); // This will handle both search and filters
+
+    // --- UI Management ---
+
+    function initializeFilterUI() {
+        // Clear previous dynamic groups
+        dynamicFilterGroupsContainer.innerHTML = '';
+        activeFilters = {}; // Reset active filters when settings change
+
+        if (configuredFilterColumns.length > 0) {
+            // Generate groups based on settings
+            configuredFilterColumns.forEach(col => {
+                generateFilterGroup(col.index, col.name);
+            });
+            filterSetupPrompt.style.display = 'none';
+            filterColumnSelector.style.display = 'none';
+            filterSettingsBtn.style.display = 'inline-block'; // Show cog
+            clearFiltersWrapper.style.display = configuredFilterColumns.length > 0 ? 'block' : 'none'; // Show clear all if groups exist
+            dynamicFilterGroupsContainer.style.display = 'block';
+        } else {
+            // Show setup prompt
+            filterSetupPrompt.style.display = 'block';
+            filterColumnSelector.style.display = 'none';
+            filterSettingsBtn.style.display = 'none'; // Hide cog
+            clearFiltersWrapper.style.display = 'none'; // Hide clear all
+            dynamicFilterGroupsContainer.style.display = 'none';
+        }
     }
 
-    // Initialize secondary filters
-    updateSecondaryFilters();
+    function showColumnSelector() {
+        filterSetupPrompt.style.display = 'none';
+        dynamicFilterGroupsContainer.style.display = 'none'; // Hide existing filter groups
+        clearFiltersWrapper.style.display = 'none'; // Hide clear all button
 
-    // --- Dynamic Column Visibility ---
+        columnCheckboxesContainer.innerHTML = ''; // Clear previous checkboxes
+        const headers = Array.from(table.querySelectorAll('thead th'));
+
+        headers.forEach((header, index) => {
+            // Skip the last column (Settings)
+            if (index === headers.length - 1) return;
+
+            const columnName = header.textContent.trim();
+            const checkboxId = `filter-col-checkbox-${index}`;
+
+            const label = document.createElement('label');
+            label.htmlFor = checkboxId;
+
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.id = checkboxId;
+            input.value = index; // Store index in value
+            input.dataset.columnName = columnName; // Store name
+
+            // Check if this column is currently configured
+            input.checked = configuredFilterColumns.some(col => col.index === index);
+
+            label.appendChild(input);
+            label.appendChild(document.createTextNode(` ${columnName}`)); // Add space before name
+            columnCheckboxesContainer.appendChild(label);
+        });
+
+        filterColumnSelector.style.display = 'block';
+    }
+
+    // Event Listeners for Setup/Settings UI
+    setupFiltersBtn.addEventListener('click', showColumnSelector);
+    filterSettingsBtn.addEventListener('click', showColumnSelector);
+
+    saveFilterSettingsBtn.addEventListener('click', () => {
+        const selectedColumns = [];
+        columnCheckboxesContainer.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+            selectedColumns.push({
+                index: parseInt(checkbox.value),
+                name: checkbox.dataset.columnName
+            });
+        });
+        // Sort by index to maintain consistent order if needed
+        selectedColumns.sort((a, b) => a.index - b.index);
+        saveFilterSettings(selectedColumns); // This also calls initializeFilterUI and applyFilters
+    });
+
+    cancelFilterSettingsBtn.addEventListener('click', () => {
+        filterColumnSelector.style.display = 'none';
+        // Restore visibility based on whether filters were previously configured
+        initializeFilterUI(); // This will show prompt or existing filters
+    });
+
+
+    // --- Dynamic Column Visibility (Table Columns) ---
     const columnTogglesContainer = document.querySelector('.settings-menu .column-toggles');
-    const tableHeaders = Array.from(table.querySelectorAll('thead th'));
+    // Ensure tableHeaders is defined *after* the table element is known
+    const tableHeaders = table ? Array.from(table.querySelectorAll('thead th')) : [];
 
     function toggleColumn(columnIndex, isVisible) {
-        const table = document.getElementById('data-table');
-        const headers = table.querySelectorAll('thead th');
+        // const table = document.getElementById('data-table'); // Already defined globally
+        // const headers = table.querySelectorAll('thead th'); // Use global tableHeaders
         const bodyRows = table.querySelectorAll('tbody tr');
 
         // Toggle header visibility
+        const headers = tableHeaders; // Use the globally defined headers
         if (headers[columnIndex]) {
             headers[columnIndex].classList.toggle('hide-column', !isVisible);
         }
@@ -251,8 +324,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function createColumnToggles() {
         columnTogglesContainer.innerHTML = ''; // Clear existing (if any)
         tableHeaders.forEach((header, index) => {
-            // Skip the last column (Settings)
-            if (index === tableHeaders.length - 1) return;
+            // Skip the last column (Settings) - Use global tableHeaders length
+            if (!header || index === tableHeaders.length - 1) return;
 
             const columnName = header.textContent.trim();
             const toggleId = `toggle-col-${index}`;
@@ -354,12 +427,19 @@ document.addEventListener('DOMContentLoaded', function () {
     filterContainerHeader.addEventListener('click', toggleFilterCollapse);
 
 
-    // Initialize table structure
+    // Initialize table structure (ensure it runs before filter init)
     updateTableStructure();
-    // Initialize column toggles
-    createColumnToggles();
 
-    // Add double-click to copy functionality
+    // Initialize Filter Settings & UI (Loads from localStorage)
+    loadFilterSettings();
+
+    // Initialize column toggles (after table structure is potentially updated)
+    if (tableHeaders.length > 0) { // Only run if headers were found
+        createColumnToggles();
+    }
+
+
+    // Add double-click to copy functionality (ensure table exists)
     table.addEventListener('dblclick', (e) => {
         const cell = e.target.closest('td');
         if (!cell || cell.classList.contains('settings-column')) return;

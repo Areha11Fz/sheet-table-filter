@@ -27,28 +27,41 @@
     <div class="filter-container" id="filter-container">
         <div class="filter-container-header">
             <h2>Filters</h2>
-            <button id="toggle-filters-btn" class="toggle-filters-btn" title="Toggle Filters">
-                <i class="fas fa-chevron-up"></i> <!-- Default open state -->
-            </button>
+            <div> <!-- Wrapper for buttons -->
+                <button id="filter-settings-btn" class="filter-settings-btn" title="Configure Filter Columns"
+                    style="display: none;">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button id="toggle-filters-btn" class="toggle-filters-btn" title="Toggle Filters">
+                    <i class="fas fa-chevron-up"></i> <!-- Default open state -->
+                </button>
+            </div>
         </div>
         <div class="filter-content" id="filter-content"> <!-- Wrapper for collapsible content -->
-            <div id="primary-filters" class="filter-group">
-                <div class="filter-group-header">
-                    <h3>Primary Filters</h3>
-                    <button id="clear-primary-filters" class="clear-group-btn"
-                        title="Clear Primary Filters">Clear</button>
-                </div>
-                <!-- Dynamically populated from column 2 -->
+            <!-- Initial Setup Prompt -->
+            <div id="filter-setup-prompt" style="display: none; text-align: center; padding: 2rem;">
+                <p>No filter columns selected.</p>
+                <button id="setup-filters-btn" class="setup-filters-btn">Select Columns for Filtering</button>
             </div>
-            <div id="secondary-filters" class="filter-group">
-                <div class="filter-group-header">
-                    <h3>Secondary Filters</h3>
-                    <button id="clear-secondary-filters" class="clear-group-btn"
-                        title="Clear Secondary Filters">Clear</button>
+
+            <!-- Column Selector UI (Initially Hidden) -->
+            <div id="filter-column-selector" style="display: none; padding: 1rem; border-top: 1px solid #ddd;">
+                <h4>Select Columns to Generate Filters For:</h4>
+                <div id="column-checkboxes" style="margin: 1rem 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <!-- Checkboxes will be populated here -->
                 </div>
-                <!-- Dynamically populated from column 3 -->
+                <button id="save-filter-settings-btn" class="save-filter-settings-btn">Save Filter Settings</button>
+                <button id="cancel-filter-settings-btn" class="cancel-filter-settings-btn">Cancel</button>
             </div>
-            <div class="clear-filters-wrapper">
+
+            <!-- Dynamically Generated Filter Groups -->
+            <div id="dynamic-filter-groups">
+                <!-- Filter groups will be generated here -->
+            </div>
+
+            <!-- Clear All Button (might be moved/adjusted later) -->
+            <div id="clear-filters-wrapper" class="clear-filters-wrapper" style="display: none;">
+                <!-- Hide initially -->
                 <button id="clear-filters" class="clear-filters-btn">Clear All Filters</button>
             </div>
         </div> <!-- End filter-content wrapper -->
