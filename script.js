@@ -165,9 +165,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const uniqueValues = new Map(); // Map<value, count>
         rows.forEach(row => {
             if (row.cells[columnIndex]) {
-                const value = row.cells[columnIndex].textContent.trim();
-                if (value) { // Ignore empty values
-                    uniqueValues.set(value, (uniqueValues.get(value) || 0) + 1);
+                const cellContent = row.cells[columnIndex].textContent.trim();
+                if (cellContent) {
+                    // Split by comma and process each value
+                    const values = cellContent.split(',').map(v => v.trim()).filter(v => v); // Trim and remove empty strings
+                    values.forEach(value => {
+                        uniqueValues.set(value, (uniqueValues.get(value) || 0) + 1);
+                    });
                 }
             }
         });
@@ -317,11 +321,17 @@ document.addEventListener('DOMContentLoaded', function () {
             // Apply dynamic filters
             let matchesAllActiveFilters = true;
             for (const columnIndex in activeFilters) {
-                if (activeFilters[columnIndex].size > 0) { // Only check if filters are active for this column
-                    const cellValue = row.cells[columnIndex] ? row.cells[columnIndex].textContent.trim() : '';
-                    if (!activeFilters[columnIndex].has(cellValue)) {
+                const activeValueSet = activeFilters[columnIndex];
+                if (activeValueSet.size > 0) { // Only check if filters are active for this column
+                    const cellContent = row.cells[columnIndex] ? row.cells[columnIndex].textContent.trim() : '';
+                    const cellValues = cellContent.split(',').map(v => v.trim()).filter(v => v); // Get values in the cell
+
+                    // Check if *at least one* value in the cell matches *any* active filter for this column
+                    const matchesThisColumn = cellValues.some(cellValue => activeValueSet.has(cellValue));
+
+                    if (!matchesThisColumn) {
                         matchesAllActiveFilters = false;
-                        break; // No need to check other filter groups for this row
+                        break; // Row doesn't match this filter group, no need to check others
                     }
                 }
             }
