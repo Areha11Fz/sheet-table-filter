@@ -98,12 +98,25 @@ document.addEventListener('DOMContentLoaded', function () {
         settingsTh.innerHTML = `<button id="settings-btn" class="settings-btn"><i class="fas fa-cog"></i></button>`;
         headerRow.appendChild(settingsTh);
 
+        // Find the index of the "Link" column (case-insensitive)
+        const linkColumnIndex = data[0].findIndex(header => header.toLowerCase() === 'link');
+
         // Populate Body Rows
         data.slice(1).forEach(rowData => {
             const row = tableBody.insertRow();
-            rowData.forEach(cellData => {
+            rowData.forEach((cellData, cellIndex) => {
                 const cell = row.insertCell();
-                cell.textContent = cellData;
+                if (cellIndex === linkColumnIndex && cellData) {
+                    // Create a button if it's the Link column and has data
+                    const button = document.createElement('button');
+                    button.textContent = 'Workflow'; // Static text
+                    button.className = 'workflow-link'; // Apply link-like styling
+                    button.dataset.imageUrl = cellData; // Store URL in data attribute
+                    cell.appendChild(button);
+                } else {
+                    // Otherwise, just set text content
+                    cell.textContent = cellData;
+                }
             });
             // Add empty cell for settings column
             const settingsTd = row.insertCell();
@@ -140,6 +153,7 @@ document.addEventListener('DOMContentLoaded', function () {
         attachSettingsMenuListeners();
         attachDoubleClickCopyListener();
         attachHamburgerListener();
+        attachWorkflowModalListeners(); // Add listener for modal triggers
         // Note: Filter button listeners are added during generation
     }
 
@@ -658,6 +672,54 @@ document.addEventListener('DOMContentLoaded', function () {
             navMenu.classList.remove('active');
         }
     });
+
+
+    // --- Initial Load ---
+    // --- Image Modal Logic ---
+    const modal = document.getElementById("imageModal");
+    const modalImg = document.getElementById("modalImage");
+    const captionText = document.getElementById("modalCaption");
+    const modalCloseBtn = document.getElementById("modalCloseBtn");
+
+    function openImageModal(imageUrl) {
+        if (modal && modalImg) {
+            modal.style.display = "block";
+            modalImg.src = imageUrl;
+            // captionText.innerHTML = this.alt; // Optional: Add caption if needed
+        }
+    }
+
+    function closeImageModal() {
+        if (modal) {
+            modal.style.display = "none";
+            modalImg.src = ""; // Clear src
+        }
+    }
+
+    // Attach listeners to dynamically created workflow buttons
+    function attachWorkflowModalListeners() {
+        tableBody.addEventListener('click', function (event) {
+            if (event.target.classList.contains('workflow-link')) {
+                const imageUrl = event.target.dataset.imageUrl;
+                if (imageUrl) {
+                    openImageModal(imageUrl);
+                }
+            }
+        });
+    }
+
+    // Close modal listeners
+    if (modalCloseBtn) {
+        modalCloseBtn.onclick = closeImageModal;
+    }
+    // Close modal if clicking outside the image
+    if (modal) {
+        modal.onclick = function (event) {
+            if (event.target === modal) { // Check if click is on the background overlay
+                closeImageModal();
+            }
+        }
+    }
 
 
     // --- Initial Load ---
