@@ -274,7 +274,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Event Listeners for Setup/Settings UI
     setupFiltersBtn.addEventListener('click', showColumnSelector);
-    filterSettingsBtn.addEventListener('click', showColumnSelector);
+    filterSettingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent click from bubbling to header
+        showColumnSelector();
+    });
 
     saveFilterSettingsBtn.addEventListener('click', () => {
         const selectedColumns = [];
