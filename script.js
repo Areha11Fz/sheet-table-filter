@@ -303,6 +303,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const columnTogglesContainer = document.querySelector('.settings-menu .column-toggles');
     // Ensure tableHeaders is defined *after* the table element is known
     const tableHeaders = table ? Array.from(table.querySelectorAll('thead th')) : [];
+    const columnVisibilityKey = 'columnVisibilityState'; // localStorage key
+    let columnVisibilityState = {}; // Object like { columnIndex: boolean (isVisible) }
+
+    function loadColumnVisibilityState() {
+        const savedState = localStorage.getItem(columnVisibilityKey);
+        if (savedState) {
+            try {
+                columnVisibilityState = JSON.parse(savedState);
+                // Optional: Add validation if needed
+            } catch (e) {
+                console.error("Error parsing column visibility state:", e);
+                columnVisibilityState = {}; // Reset on error
+            }
+        } else {
+            columnVisibilityState = {}; // Default to empty (all visible)
+        }
+    }
 
     function toggleColumn(columnIndex, isVisible) {
         // const table = document.getElementById('data-table'); // Already defined globally
@@ -322,10 +339,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 cell.classList.toggle('hide-column', !isVisible);
             }
         });
+
+        // Update and save state
+        columnVisibilityState[columnIndex] = isVisible;
+        localStorage.setItem(columnVisibilityKey, JSON.stringify(columnVisibilityState));
     }
 
     function createColumnToggles() {
+        loadColumnVisibilityState(); // Load state before creating toggles
         columnTogglesContainer.innerHTML = ''; // Clear existing (if any)
+
         tableHeaders.forEach((header, index) => {
             // Skip the last column (Settings) - Use global tableHeaders length
             if (!header || index === tableHeaders.length - 1) return;
@@ -339,8 +362,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const input = document.createElement('input');
             input.type = 'checkbox';
             input.id = toggleId;
-            input.checked = true; // Default to visible
+            // Set initial state based on loaded state, default to true (visible) if not set
+            const isVisible = columnVisibilityState.hasOwnProperty(index) ? columnVisibilityState[index] : true;
+            input.checked = isVisible;
             input.dataset.columnIndex = index; // Store index
+
+            // Apply initial visibility class (important!)
+            if (!isVisible) {
+                if (tableHeaders[index]) tableHeaders[index].classList.add('hide-column');
+                // Also hide corresponding body cells initially
+                table.querySelectorAll(`tbody tr td:nth-child(${index + 1})`).forEach(cell => cell.classList.add('hide-column'));
+            }
+
 
             const slider = document.createElement('span');
             slider.className = 'slider round';
