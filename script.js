@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let configuredFilterColumns = []; // Array of { index: number, name: string }
     let activeFilters = {}; // Object to store active filters, e.g., { columnIndex: Set(['value1', 'value2']) }
     let tableHeaders = []; // Will be populated after fetch
+    const lastSheetIdKey = 'lastLoadedSheetId'; // localStorage key for sheet ID
 
     // --- Authentication (Implicit Grant Flow) ---
 
@@ -135,6 +136,15 @@ document.addEventListener('DOMContentLoaded', function () {
             sheetInputSection.style.display = 'block'; // Show sheet input
             authStatusMessageSpan.textContent = ''; // Clear status message
             // User info div visibility is handled by displayUserInfo
+
+            // Attempt to auto-load last sheet if we just logged in
+            const lastSheetId = localStorage.getItem(lastSheetIdKey);
+            if (lastSheetId && !tableBody.hasChildNodes()) { // Check if table not already loaded
+                sheetIdInput.value = lastSheetId; // Pre-fill input
+                console.log("Attempting to auto-load last sheet:", lastSheetId);
+                // Use timeout to avoid potential race conditions with UI updates
+                setTimeout(() => loadSheetDataFromApi(), 50);
+            }
         } else {
             loginBtn.style.display = 'block';
             logoutBtn.style.display = 'none';
@@ -242,6 +252,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // The API returns data as a 2D array in data.values
             const apiData = data.values;
+
+            // Save successfully loaded sheet ID before populating
+            localStorage.setItem(lastSheetIdKey, sheetId); // Save the actual ID used
+
             populateTable(apiData); // Use the existing populateTable function
             initializePostDataLoad(); // Initialize filters etc.
 
@@ -935,6 +949,14 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('Access Token found in sessionStorage');
             currentAccessToken = accessToken;
             fetchUserInfo(currentAccessToken); // Validate token and update UI
+            // Attempt to auto-load last sheet if token is valid
+            const lastSheetId = localStorage.getItem(lastSheetIdKey);
+            if (lastSheetId) {
+                sheetIdInput.value = lastSheetId; // Pre-fill input
+                console.log("Attempting to auto-load last sheet from session:", lastSheetId);
+                // Use a small delay to ensure UI updates from fetchUserInfo complete
+                setTimeout(() => loadSheetDataFromApi(), 50);
+            }
         } else {
             accessToken = getAccessTokenFromUrl(); // Check URL fragment if not in storage
             if (accessToken) {
@@ -950,6 +972,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 fetchUserInfo(currentAccessToken); // Fetch user info now
+
+                // Attempt to auto-load last sheet if token is valid
+                const lastSheetId = localStorage.getItem(lastSheetIdKey);
+                if (lastSheetId) {
+                    sheetIdInput.value = lastSheetId; // Pre-fill input
+                    console.log("Attempting to auto-load last sheet from URL token:", lastSheetId);
+                    // Use a small delay
+                    setTimeout(() => loadSheetDataFromApi(), 50);
+                }
             } else {
                 // No token found anywhere
                 updateUI(false); // Ensure initial state is logged out
