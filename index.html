@@ -7,6 +7,10 @@
     <title>Data Filter Table</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
+    <!-- Google API Client Library -->
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+    <!-- Google Identity Services Library -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
 <body>
@@ -20,6 +24,32 @@
             <a href="#">About Me</a>
         </div>
     </nav>
+
+    <!-- Auth & Sheet Input Section -->
+    <div class="auth-sheet-container">
+        <div id="auth-status" style="margin-bottom: 1rem;">
+            <button id="authorize_button" style="display: none;">Sign In / Authorize</button>
+            <!-- Will rename this ID in JS -->
+            <button id="signout_button" style="display: none;">Sign Out</button> <!-- Will rename this ID in JS -->
+            <!-- User Info Display Area -->
+            <div id="userInfo" class="hidden"
+                style="margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <img id="userPicture" src="" alt="User profile picture"
+                    style="width: 30px; height: 30px; border-radius: 50%; display: none;">
+                <div>
+                    Logged in as: <span id="userName"></span> (<span id="userEmail"></span>)
+                </div>
+            </div>
+            <span id="auth-status-message" style="margin-left: 1rem; font-style: italic;"></span>
+            <!-- Renamed from user-info -->
+        </div>
+        <div id="sheet-input-section" style="display: none; margin-bottom: 1rem;">
+            <label for="sheet-id-input">Google Sheet ID or URL:</label>
+            <input type="text" id="sheet-id-input" placeholder="Enter Sheet ID or URL" size="40">
+            <button id="load-sheet-button">Load Sheet Data</button>
+        </div>
+    </div>
+
 
     <!-- Filter Section -->
     <div class="filter-container" id="filter-container">

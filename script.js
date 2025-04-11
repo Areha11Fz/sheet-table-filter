@@ -1,9 +1,35 @@
 document.addEventListener('DOMContentLoaded', function () {
     const table = document.getElementById('data-table');
+    // Removed duplicate table declaration
     const tableHead = table.querySelector('thead');
     const tableBody = table.querySelector('tbody');
     const loadingIndicator = document.getElementById('table-loading-indicator');
     let rows = []; // Will be populated after fetch
+
+    // --- Configuration & Auth Variables (Implicit Grant Flow) ---
+    const CLIENT_ID = '60205420705-5ldius1gebfc9svc0jqeq7cj3vh2q733.apps.googleusercontent.com';
+    // IMPORTANT: Set this to your actual deployment URL in Google Cloud Console
+    const REDIRECT_URI = window.location.origin + window.location.pathname;
+    // Request basic profile info + sheets read-only access
+    const SCOPES = 'openid profile email https://www.googleapis.com/auth/spreadsheets.readonly';
+    const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+    const USERINFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo';
+    const SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
+
+    let currentAccessToken = null; // Store the access token
+
+    // --- DOM Elements ---
+    const loginBtn = document.getElementById('authorize_button'); // Keep old ID for now, map variable
+    const logoutBtn = document.getElementById('signout_button'); // Keep old ID for now, map variable
+    const authStatusMessageSpan = document.getElementById('auth-status-message');
+    const userInfoDiv = document.getElementById('userInfo');
+    const userNameSpan = document.getElementById('userName');
+    const userEmailSpan = document.getElementById('userEmail');
+    const userPictureImg = document.getElementById('userPicture');
+    const sheetInputSection = document.getElementById('sheet-input-section');
+    const sheetIdInput = document.getElementById('sheet-id-input');
+    const loadSheetButton = document.getElementById('load-sheet-button');
+
 
     const clearFiltersBtn = document.getElementById('clear-filters');
     const dynamicFilterGroupsContainer = document.getElementById('dynamic-filter-groups');
@@ -21,65 +47,216 @@ document.addEventListener('DOMContentLoaded', function () {
     let activeFilters = {}; // Object to store active filters, e.g., { columnIndex: Set(['value1', 'value2']) }
     let tableHeaders = []; // Will be populated after fetch
 
-    // --- Google Sheet Loading ---
-    const sheetId = '1WcqNK4kQ-As2kcolqpwzJK-KtObRzGrScSNCum8Q5Ds';
-    const sheetGid = '0'; // Or the specific GID if not the first sheet
-    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${sheetGid}`;
+    // --- Authentication (Implicit Grant Flow) ---
 
-    async function loadSheetData() {
-        loadingIndicator.style.display = 'block';
-        table.style.display = 'none';
+    /**
+     * Extracts access token from the URL fragment.
+     * @returns {string|null} Access token or null if not found.
+     */
+    function getAccessTokenFromUrl() {
+        const fragment = window.location.hash.substring(1); // Remove '#'
+        const params = new URLSearchParams(fragment);
+        return params.get('access_token');
+    }
+
+    /**
+     * Redirects the user to Google's OAuth 2.0 server.
+     */
+    function redirectToGoogleLogin() {
+        const params = {
+            client_id: CLIENT_ID,
+            redirect_uri: REDIRECT_URI,
+            response_type: 'token', // Use 'token' for Implicit Grant Flow
+            scope: SCOPES,
+            include_granted_scopes: 'true',
+            // state: 'pass-through-value' // Optional
+        };
+        const queryString = new URLSearchParams(params).toString();
+        const oauthUrl = `${AUTH_URL}?${queryString}`;
+        console.log('Redirecting to:', oauthUrl);
+        window.location.href = oauthUrl; // Perform the redirect
+    }
+
+    /**
+     * Fetches user information from Google using the access token.
+     * @param {string} accessToken The access token.
+     */
+    async function fetchUserInfo(accessToken) {
         try {
-            const response = await fetch(sheetUrl);
+            console.log('Fetching user info with token:', accessToken);
+            const response = await fetch(USERINFO_URL, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                if (response.status === 401) {
+                    console.error('Access Token seems invalid or expired.');
+                    clearTokenAndLogout(); // Treat as logged out
+                } else {
+                    throw new Error(`Google API Error: ${response.status} ${response.statusText}`);
+                }
+                return;
             }
-            const csvData = await response.text();
-            const parsedData = parseCSV(csvData);
-
-            if (parsedData.length > 0) {
-                populateTable(parsedData);
-                // Initialize everything else *after* table is populated
-                initializePostDataLoad();
-            } else {
-                console.error("No data parsed from CSV.");
-                loadingIndicator.textContent = 'Failed to load or parse data.';
-            }
-
+            const data = await response.json();
+            console.log('User Info:', data);
+            displayUserInfo(data);
+            updateUI(true); // Update UI to show logged-in state
         } catch (error) {
-            console.error('Error loading or parsing sheet data:', error);
-            loadingIndicator.textContent = 'Error loading data. Please check the console.';
+            console.error('Failed to fetch user info:', error);
+            authStatusMessageSpan.textContent = `Error fetching user info: ${error.message}`;
+            updateUI(false); // Assume error means logged out state
+        }
+    }
+
+    /**
+     * Displays the fetched user information on the page.
+     * @param {object} userInfo User data from Google.
+     */
+    function displayUserInfo(userInfo) {
+        userNameSpan.textContent = userInfo.name || 'N/A';
+        userEmailSpan.textContent = userInfo.email || 'N/A';
+        if (userInfo.picture) {
+            userPictureImg.src = userInfo.picture;
+            userPictureImg.style.display = 'inline-block';
+        } else {
+            userPictureImg.style.display = 'none';
+        }
+        userInfoDiv.classList.remove('hidden');
+    }
+
+    /**
+     * Updates the visibility of buttons and info sections based on login status.
+     * @param {boolean} isLoggedIn Is the user considered logged in?
+     */
+    function updateUI(isLoggedIn) {
+        if (isLoggedIn) {
+            loginBtn.style.display = 'none';
+            logoutBtn.style.display = 'block';
+            sheetInputSection.style.display = 'block'; // Show sheet input
+            authStatusMessageSpan.textContent = ''; // Clear status message
+            // User info div visibility is handled by displayUserInfo
+        } else {
+            loginBtn.style.display = 'block';
+            logoutBtn.style.display = 'none';
+            sheetInputSection.style.display = 'none'; // Hide sheet input
+            authStatusMessageSpan.textContent = 'Please sign in to load a sheet.';
+            userInfoDiv.classList.add('hidden'); // Hide user info
+            userNameSpan.textContent = '';
+            userEmailSpan.textContent = '';
+            userPictureImg.src = '';
+            userPictureImg.style.display = 'none';
+        }
+    }
+
+    /**
+     * Clears the stored access token and updates the UI.
+     */
+    function clearTokenAndLogout() {
+        currentAccessToken = null;
+        sessionStorage.removeItem('google_access_token'); // Clear from sessionStorage
+        console.log('Logging out.');
+        // Clear the sensitive parts of the URL fragment if present
+        if (window.location.hash.includes('access_token')) {
+            try {
+                // Use history.replaceState to remove hash without reload if possible
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            } catch (e) {
+                window.location.hash = ''; // Fallback for older browsers
+            }
+        }
+        updateUI(false);
+        clearTableAndState(); // Also clear table data on logout
+    }
+
+    function clearTableAndState() {
+        tableHead.innerHTML = '';
+        tableBody.innerHTML = '';
+        table.style.display = 'none';
+        rows = [];
+        tableHeaders = [];
+        activeFilters = {};
+        configuredFilterColumns = []; // Or reload from localStorage if preferred? For now, clear.
+        // localStorage.removeItem(filterSettingsKey); // Optional: clear filter settings on sign out
+        initializeFilterUI(); // Reset filter UI to initial/prompt state
+        // Clear column visibility state?
+        // columnVisibilityState = {};
+        // localStorage.removeItem(columnVisibilityKey);
+    }
+
+
+    // --- Google Sheet Loading (API Version using Fetch) ---
+
+    async function loadSheetDataFromApi() {
+        if (!currentAccessToken) {
+            alert('You must be signed in to load a sheet.');
+            return;
+        }
+        const sheetIdInputValue = sheetIdInput.value.trim();
+        if (!sheetIdInputValue) {
+            alert('Please enter a Google Sheet ID or URL.');
+            return;
+        }
+
+        // Basic extraction of Sheet ID from URL or direct ID
+        let sheetId = sheetIdInputValue;
+        try {
+            const urlMatch = sheetIdInputValue.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            if (urlMatch && urlMatch[1]) {
+                sheetId = urlMatch[1];
+            }
+        } catch (e) { /* Ignore errors, assume it might be an ID */ }
+
+
+        loadingIndicator.style.display = 'block';
+        loadingIndicator.textContent = 'Loading table data...'; // Reset message
+        table.style.display = 'none';
+        clearTableAndState(); // Clear previous table/state before loading new
+
+        try {
+            // Construct the Sheets API URL
+            const range = 'Sheet1!A1:Z'; // Adjust as needed
+            const apiUrl = `${SHEETS_API_BASE}/${sheetId}/values/${encodeURIComponent(range)}`;
+
+            const response = await fetch(apiUrl, {
+                headers: { 'Authorization': `Bearer ${currentAccessToken}` }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401 || response.status === 403) {
+                    console.error('Authorization error fetching sheet data. Token might be invalid/expired or insufficient permissions.');
+                    alert('Could not load sheet. Please ensure you have access and try signing in again.');
+                    clearTokenAndLogout();
+                } else {
+                    throw new Error(`Google Sheets API Error: ${response.status} ${response.statusText}`);
+                }
+                return; // Stop if not ok
+            }
+
+            const data = await response.json();
+
+            if (!data || !data.values || data.values.length == 0) {
+                console.error('No data found in sheet response.');
+                loadingIndicator.textContent = 'No data found in the specified sheet or range.';
+                return; // Exit early
+            }
+
+            // The API returns data as a 2D array in data.values
+            const apiData = data.values;
+            populateTable(apiData); // Use the existing populateTable function
+            initializePostDataLoad(); // Initialize filters etc.
+
+        } catch (err) {
+            console.error('Error fetching or processing sheet data:', err);
+            loadingIndicator.textContent = `Error loading sheet: ${err.message || 'Unknown error'}`;
         } finally {
-            // Hide loading indicator only if table was successfully populated
             if (table.style.display !== 'none') {
                 loadingIndicator.style.display = 'none';
             }
         }
     }
 
-    function parseCSV(csvText) {
-        const lines = csvText.trim().split(/\r?\n/); // Split lines, handle different line endings
-        const result = [];
-        // Regex to handle quoted fields, including escaped quotes ("")
-        const regex = /,(?=(?:[^"]*"[^"]*")*[^"]*$)/;
 
-        for (const line of lines) {
-            const fields = line.split(regex).map(field => {
-                let value = field.trim();
-                // Remove surrounding quotes if they exist
-                if (value.startsWith('"') && value.endsWith('"')) {
-                    value = value.substring(1, value.length - 1);
-                }
-                // Replace escaped double quotes ("") with a single double quote (")
-                return value.replace(/""/g, '"');
-            });
-            result.push(fields);
-        }
-        return result;
-    }
-
-
-    function populateTable(data) {
+    function populateTable(data) { // data is now a 2D array from API
         tableHead.innerHTML = ''; // Clear existing header
         tableBody.innerHTML = ''; // Clear existing body
 
@@ -132,7 +309,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    // --- Initialization Function (Called after data load) ---
+    // --- Initialization Function (Called after data load) --- (Keep most of it)
     function initializePostDataLoad() {
         // Initialize Filter Settings & UI (Loads from localStorage)
         loadFilterSettings(); // This now depends on 'rows' being populated
@@ -160,6 +337,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Filter Settings Management --- (Keep existing functions loadFilterSettings, saveFilterSettings)
 
     function loadFilterSettings() {
+        // Ensure 'rows' is populated before calculating filter counts
+        if (rows.length === 0 && tableBody.rows.length > 0) {
+            rows = Array.from(tableBody.getElementsByTagName('tr'));
+        }
         const savedSettings = localStorage.getItem(filterSettingsKey);
         if (savedSettings) {
             try {
@@ -190,6 +371,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Filter Generation --- (Keep existing functions generateFilterGroup, createFilterButton)
 
     function generateFilterGroup(columnIndex, columnName) {
+        // Ensure 'rows' is populated before calculating filter counts
+        if (rows.length === 0 && tableBody.rows.length > 0) {
+            rows = Array.from(tableBody.getElementsByTagName('tr'));
+        }
         const uniqueValues = new Map(); // Map<value, count>
         rows.forEach(row => {
             if (row.cells[columnIndex]) {
@@ -313,6 +498,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const searchColumn = document.getElementById('search-column');
 
     function updateSearchColumnOptions() {
+        // Ensure tableHeaders is populated
+        if (tableHeaders.length === 0 && tableHead.rows.length > 0) {
+            tableHeaders = Array.from(tableHead.rows[0].cells);
+        }
         searchColumn.innerHTML = '<option value="all">All Columns</option>'; // Reset
         tableHeaders.forEach((header, index) => {
             // Skip the last column (Settings)
@@ -326,6 +515,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     function applyFilters() { // Handles both search and dynamic filters
+        // Ensure 'rows' is populated
+        if (rows.length === 0 && tableBody.rows.length > 0) {
+            rows = Array.from(tableBody.getElementsByTagName('tr'));
+        }
         const searchTerm = searchInput.value.toLowerCase();
         const selectedSearchColumnIndex = searchColumn.value; // 'all' or column index string
 
@@ -510,6 +703,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function createColumnToggles() {
         loadColumnVisibilityState(); // Load state before creating toggles
         columnTogglesContainer.innerHTML = ''; // Clear existing (if any)
+        // Ensure tableHeaders is populated
+        if (tableHeaders.length === 0 && tableHead.rows.length > 0) {
+            tableHeaders = Array.from(tableHead.rows[0].cells);
+        }
 
         tableHeaders.forEach((header, index) => {
             // Skip the last column (Settings) - Use global tableHeaders length
@@ -562,7 +759,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Need to re-attach listener after header generation
     function attachSettingsMenuListeners() {
         const settingsBtn = document.getElementById('settings-btn'); // Get potentially new button
-        if (settingsBtn) {
+        if (settingsBtn && settingsMenu) { // Check both exist
             settingsBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 settingsMenu.classList.toggle('active');
@@ -627,6 +824,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Add double-click to copy functionality (ensure table exists)
     function attachDoubleClickCopyListener() {
+        if (!table) return; // Guard against null table
         table.addEventListener('dblclick', (e) => {
             const cell = e.target.closest('td');
             if (!cell || cell.classList.contains('settings-column')) return;
@@ -722,7 +920,45 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    // --- Initial Load ---
-    loadSheetData(); // Start the process by loading data
+    // --- Initial Load & Event Listeners ---
+
+    // Assign button listeners
+    loginBtn.onclick = redirectToGoogleLogin;
+    logoutBtn.onclick = clearTokenAndLogout;
+    loadSheetButton.onclick = loadSheetDataFromApi;
+
+    // Check for access token on page load (from storage first, then URL)
+    window.addEventListener('load', () => {
+        let accessToken = sessionStorage.getItem('google_access_token'); // Check storage first
+
+        if (accessToken) {
+            console.log('Access Token found in sessionStorage');
+            currentAccessToken = accessToken;
+            fetchUserInfo(currentAccessToken); // Validate token and update UI
+        } else {
+            accessToken = getAccessTokenFromUrl(); // Check URL fragment if not in storage
+            if (accessToken) {
+                console.log('Access Token found in URL');
+                currentAccessToken = accessToken; // Store the token
+                sessionStorage.setItem('google_access_token', accessToken); // Save to sessionStorage
+
+                // Remove token from URL bar for cleanliness/security
+                try {
+                    history.replaceState(null, '', window.location.pathname + window.location.search);
+                } catch (e) {
+                    window.location.hash = ''; // Fallback
+                }
+
+                fetchUserInfo(currentAccessToken); // Fetch user info now
+            } else {
+                // No token found anywhere
+                updateUI(false); // Ensure initial state is logged out
+            }
+        }
+    });
+
+    // Keep other listeners like modal, double-click, hamburger etc.
+    // The attach... functions will be called by initializePostDataLoad if data loads
+
 
 }); // <-- Correct closing }); for DOMContentLoaded

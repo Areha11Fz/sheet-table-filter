@@ -34,6 +34,50 @@ body {
   color: #ddd;
 }
 
+/* Auth & Sheet Input Styles */
+.auth-sheet-container {
+  padding: 1rem 2rem;
+  max-width: 1200px; /* Match filter/search container width */
+  margin: 1rem auto 0 auto; /* Add some margin */
+  background-color: #f9f9f9; /* Slightly different background */
+  border: 1px solid #eee;
+  border-radius: 8px;
+  text-align: center; /* Center content */
+}
+
+#sheet-input-section label {
+  margin-right: 0.5rem;
+}
+
+#sheet-input-section input[type="text"] {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-right: 0.5rem;
+}
+
+#auth-status button,
+#sheet-input-section button {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.9rem;
+  background-color: #6c757d; /* Bootstrap secondary color */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#auth-status button:hover,
+#sheet-input-section button:hover {
+  background-color: #5a6268;
+}
+
+/* Utility class */
+.hidden {
+  display: none !important;
+}
+
 .filter-settings-btn {
   background: none;
   border: none;
