@@ -222,6 +222,23 @@ body {
   color: #fff;
 }
 
+/* Style for unavailable filter buttons */
+.filter-btn.unavailable {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f0f0f0; /* Lighter background */
+  border-color: #e0e0e0;
+}
+
+.filter-btn.unavailable:hover {
+  /* Prevent hover effect on unavailable buttons */
+  background-color: #f0f0f0;
+}
+
+.filter-btn.unavailable .count {
+  color: #999; /* Grey out the count */
+}
+
 .filter-header {
   text-align: right;
   margin-bottom: 1.5rem;

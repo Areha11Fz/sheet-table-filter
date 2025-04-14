@@ -501,10 +501,71 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.classList.remove('active');
         });
         applyFilters();
+        // Update counts based on the cleared state (all rows visible initially)
+        updateFilterButtons(rows);
+    }
+
+    function clearAllFilters() {
+        activeFilters = {}; // Clear all active filters
+        // Deactivate all filter buttons visually
+        dynamicFilterGroupsContainer.querySelectorAll('.filter-btn.active').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        applyFilters(); // Apply to show all rows
+        // Update counts based on the cleared state (all rows visible)
+        updateFilterButtons(rows);
     }
 
     // Add event listener to the main clear button
     clearFiltersBtn.addEventListener('click', clearAllFilters);
+
+
+    // --- Filter Availability Update ---
+    function updateFilterButtons(visibleRows) {
+        // Iterate through each configured filter group
+        dynamicFilterGroupsContainer.querySelectorAll('.filter-group').forEach(group => {
+            const columnIndex = parseInt(group.dataset.columnIndex);
+            if (isNaN(columnIndex)) return; // Skip if column index is invalid
+
+            // Calculate counts based *only* on visible rows for this column
+            const visibleValueCounts = new Map();
+            visibleRows.forEach(row => {
+                // Ensure the row is actually visible (double check, though applyFilters should handle this)
+                if (row.style.display !== 'none' && row.cells[columnIndex]) {
+                    const cellContent = row.cells[columnIndex].textContent.trim();
+                    if (cellContent) {
+                        const values = cellContent.split(',').map(v => v.trim()).filter(v => v);
+                        values.forEach(value => {
+                            visibleValueCounts.set(value, (visibleValueCounts.get(value) || 0) + 1);
+                        });
+                    }
+                }
+            });
+
+            // Update buttons within this group
+            group.querySelectorAll('.filter-btn').forEach(button => {
+                const value = button.dataset.value;
+                const countSpan = button.querySelector('.count');
+                const currentCount = visibleValueCounts.get(value) || 0;
+
+                if (countSpan) {
+                    countSpan.textContent = ` (${currentCount})`;
+                }
+
+                // Add/remove 'unavailable' class based on count
+                if (currentCount === 0) {
+                    button.classList.add('unavailable');
+                    // Optional: Make unavailable buttons non-clickable if they aren't active
+                    // if (!button.classList.contains('active')) {
+                    //     button.disabled = true;
+                    // }
+                } else {
+                    button.classList.remove('unavailable');
+                    // button.disabled = false; // Ensure button is enabled
+                }
+            });
+        });
+    }
 
 
     // --- Search Functionality ---
@@ -574,6 +635,10 @@ document.addEventListener('DOMContentLoaded', function () {
             // Show row only if it matches search AND all active filters
             row.style.display = (matchesSearch && matchesAllActiveFilters) ? '' : 'none';
         });
+
+        // After filtering rows, update the filter button counts and availability
+        const visibleRows = rows.filter(row => row.style.display !== 'none');
+        updateFilterButtons(visibleRows);
     }
 
     // Add search event listeners
@@ -598,6 +663,8 @@ document.addEventListener('DOMContentLoaded', function () {
             filterSettingsBtn.style.display = 'inline-block'; // Show cog
             clearFiltersWrapper.style.display = configuredFilterColumns.length > 0 ? 'block' : 'none'; // Show clear all if groups exist
             dynamicFilterGroupsContainer.style.display = 'block';
+            // Update counts based on initial data load (all rows visible)
+            updateFilterButtons(rows);
         } else {
             // Show setup prompt
             filterSetupPrompt.style.display = 'block';
