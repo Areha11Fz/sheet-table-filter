@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function clearTokenAndLogout() {
         currentAccessToken = null;
-        sessionStorage.removeItem('google_access_token');
+        localStorage.removeItem('google_access_token'); // Changed from sessionStorage
         console.log('Logging out.');
         if (window.location.hash.includes('access_token')) {
             try {
@@ -244,10 +244,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Check for access token on page load
     window.addEventListener('load', () => {
-        let accessToken = sessionStorage.getItem('google_access_token');
+        let accessToken = localStorage.getItem('google_access_token'); // Changed from sessionStorage
 
         if (accessToken) {
-            console.log('Access Token found in sessionStorage');
+            console.log('Access Token found in localStorage'); // Changed log message
             currentAccessToken = accessToken;
             fetchUserInfo(currentAccessToken);
             // Auto-load handled within updateUI
@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (accessToken) {
                 console.log('Access Token found in URL');
                 currentAccessToken = accessToken;
-                sessionStorage.setItem('google_access_token', accessToken);
+                localStorage.setItem('google_access_token', accessToken); // Changed from sessionStorage
                 try {
                     history.replaceState(null, '', window.location.pathname + window.location.search);
                 } catch (e) {
