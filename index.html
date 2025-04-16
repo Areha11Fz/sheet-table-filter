@@ -25,13 +25,38 @@
         </div>
         <!-- Navbar Actions Area -->
         <div class="nav-actions">
-            <button id="open-load-modal-btn" class="nav-button">Load Sheet</button>
+            <button id="open-load-modal-btn" class="nav-button" style="display: none;">Load Sheet</button>
+            <!-- Hide initially -->
             <!-- User status/logout could go here later -->
         </div>
     </nav>
 
+    <!-- Initial Load Form Section -->
+    <div id="initial-load-form" class="sheet-auth-container"
+        style="padding: 20px; border: 1px solid #ccc; margin: 20px; border-radius: 8px;">
+        <h2>Load Google Sheet</h2>
+        <div id="sheet-input-section" style="margin-bottom: 1rem;">
+            <label for="sheet-id-input">Google Sheet ID or URL:</label>
+            <input type="text" id="sheet-id-input" placeholder="Enter Sheet ID or URL" size="40">
+            <button id="load-sheet-button">Load Public Sheet</button> <!-- Button text might be adjusted by JS -->
+        </div>
+        <div class="or-separator" style="margin: 1rem 0;">Or</div>
+        <div id="auth-status" style="margin-bottom: 1rem; text-align: center;">
+            <button id="authorize_button">Sign In to Load Private Sheet</button>
+            <div id="userInfo" class="hidden"
+                style="margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <img id="userPicture" src="" alt="User profile picture"
+                    style="width: 30px; height: 30px; border-radius: 50%; display: none;">
+                <div>
+                    Logged in as: <span id="userName"></span> (<span id="userEmail"></span>)
+                </div>
+                <button id="signout_button" style="display: none; margin-left: 10px;">Sign Out</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Filter Section -->
-    <div class="filter-container" id="filter-container">
+    <div class="filter-container" id="filter-container" style="display: none;"> <!-- Hide initially -->
         <div class="filter-container-header">
             <h2>Filters</h2>
             <div> <!-- Wrapper for buttons -->
@@ -75,7 +100,7 @@
     </div>
 
     <!-- Search Section -->
-    <div class="search-container">
+    <div class="search-container" style="display: none;"> <!-- Hide initially -->
         <div class="search-wrapper">
             <input type="text" id="search-input" placeholder="Search...">
             <select id="search-column">

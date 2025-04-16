@@ -2,7 +2,7 @@ import {
     populateTable,
     initializePostDataLoad,
     setupTableEventListeners,
-    clearTableAndState,
+    clearTableAndState as clearTableDataAndState, // Renamed to avoid conflict
     showLoadingIndicator,
     hideLoadingIndicator
 } from './tableOperations.js';
@@ -19,26 +19,67 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentAccessToken = null; // Store the access token
 
     // --- DOM Elements (Main Script) ---
-    const loginBtn = document.getElementById('authorize_button');
-    const logoutBtn = document.getElementById('signout_button');
-    // Removed authStatusMessageSpan reference
-    const userInfoDiv = document.getElementById('userInfo');
-    const userNameSpan = document.getElementById('userName');
-    const userEmailSpan = document.getElementById('userEmail');
-    const userPictureImg = document.getElementById('userPicture');
-    const sheetInputSection = document.getElementById('sheet-input-section');
-    const sheetIdInput = document.getElementById('sheet-id-input');
-    // Removed: const publicSheetCheckbox = document.getElementById('public-sheet-checkbox');
-    const loadSheetButton = document.getElementById('load-sheet-button');
+    const initialLoadForm = document.getElementById('initial-load-form'); // Added
+    const filterContainer = document.getElementById('filter-container'); // Added
+    const searchContainer = document.getElementById('search-container'); // Added
+    const tableContainer = document.querySelector('.table-container'); // Added
+
+    // Get references to elements within BOTH forms (initial and modal)
+    // Initial Form Elements
+    const loginBtn = initialLoadForm?.querySelector('#authorize_button');
+    const logoutBtn = initialLoadForm?.querySelector('#signout_button');
+    const userInfoDiv = initialLoadForm?.querySelector('#userInfo');
+    const userNameSpan = initialLoadForm?.querySelector('#userName');
+    const userEmailSpan = initialLoadForm?.querySelector('#userEmail');
+    const userPictureImg = initialLoadForm?.querySelector('#userPicture');
+    const sheetIdInput = initialLoadForm?.querySelector('#sheet-id-input');
+    const loadSheetButton = initialLoadForm?.querySelector('#load-sheet-button');
+
+    // Navbar Elements
     const hamburgerBtn = document.getElementById('hamburger-btn');
     const navMenu = document.getElementById('nav-menu');
-    const loadSheetModal = document.getElementById('loadSheetModal'); // Added
-    const openLoadModalBtn = document.getElementById('open-load-modal-btn'); // Added
-    const closeLoadModalBtn = document.getElementById('closeLoadModalBtn'); // Added
-    const loadStatusDisplay = document.getElementById('load-status-display'); // Added
+    const openLoadModalBtn = document.getElementById('open-load-modal-btn'); // Button in navbar
+
+    // Modal Elements
+    const loadSheetModal = document.getElementById('loadSheetModal');
+    const closeLoadModalBtn = document.getElementById('closeLoadModalBtn'); // Close button in modal
+    const modalSheetIdInput = loadSheetModal?.querySelector('#sheet-id-input');
+    const modalLoadSheetButton = loadSheetModal?.querySelector('#load-sheet-button');
+    const modalLoginButton = loadSheetModal?.querySelector('#authorize_button');
+    const modalLogoutButton = loadSheetModal?.querySelector('#signout_button');
+    const modalUserInfoDiv = loadSheetModal?.querySelector('#userInfo');
+
 
     // --- State (Main Script) ---
     const lastSheetIdKey = 'lastLoadedSheetId'; // localStorage key for sheet ID
+
+    // --- UI State Functions ---
+
+    function resetToInitialView() {
+        console.log("Resetting to initial view");
+        if (initialLoadForm) initialLoadForm.style.display = 'block'; // Or 'flex' etc. depending on CSS
+        if (filterContainer) filterContainer.style.display = 'none';
+        if (searchContainer) searchContainer.style.display = 'none';
+        if (openLoadModalBtn) openLoadModalBtn.style.display = 'none';
+        // Also hide the table itself and any loading indicators from tableOperations
+        const dataTable = document.getElementById('data-table');
+        const loadingIndicator = document.getElementById('table-loading-indicator');
+        if (dataTable) dataTable.style.display = 'none';
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        if (tableContainer) tableContainer.style.display = 'none'; // Hide whole container
+    }
+
+    function showMainContentView() {
+        console.log("Showing main content view");
+        if (initialLoadForm) initialLoadForm.style.display = 'none';
+        if (filterContainer) filterContainer.style.display = 'block'; // Or 'flex' etc.
+        if (searchContainer) searchContainer.style.display = 'block'; // Or 'flex' etc.
+        if (tableContainer) tableContainer.style.display = 'block'; // Show table container
+        if (openLoadModalBtn) {
+            openLoadModalBtn.style.display = 'block'; // Or 'inline-block' etc.
+            openLoadModalBtn.textContent = 'Load Different Sheet';
+        }
+    }
 
     // --- Authentication (Implicit Grant Flow) ---
 
@@ -72,99 +113,124 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) {
                 if (response.status === 401) {
                     console.error('Access Token seems invalid or expired.');
-                    clearTokenAndLogout();
+                    clearTokenAndLogout(); // This will reset the view
                 } else {
                     throw new Error(`Google API Error: ${response.status} ${response.statusText}`);
                 }
-                return;
+                return; // Exit if token is invalid
             }
             const data = await response.json();
             console.log('User Info:', data);
-            displayUserInfo(data);
-            updateUI(true);
+            displayUserInfo(data); // Update user info display in both forms
+            updateUI(true); // Update button states
         } catch (error) {
             console.error('Failed to fetch user info:', error);
-            // Removed authStatusMessageSpan reference
-            updateUI(false);
+            updateUI(false); // Ensure UI reflects logged-out state if fetch fails
+            // Don't reset view here, might be a temporary network issue
         }
     }
 
+    // Updated to potentially update both initial form and modal form elements
     function displayUserInfo(userInfo) {
-        if (userNameSpan) userNameSpan.textContent = userInfo.name || 'N/A';
-        if (userEmailSpan) userEmailSpan.textContent = userInfo.email || 'N/A';
+        const name = userInfo.name || 'N/A';
+        const email = userInfo.email || 'N/A';
+        const picture = userInfo.picture;
+
+        // Update initial form elements
+        if (userNameSpan) userNameSpan.textContent = name;
+        if (userEmailSpan) userEmailSpan.textContent = email;
         if (userPictureImg) {
-            if (userInfo.picture) {
-                userPictureImg.src = userInfo.picture;
+            if (picture) {
+                userPictureImg.src = picture;
                 userPictureImg.style.display = 'inline-block';
             } else {
                 userPictureImg.style.display = 'none';
             }
         }
         if (userInfoDiv) userInfoDiv.classList.remove('hidden');
+
+        // Update modal form elements
+        const modalUserNameSpan = modalUserInfoDiv?.querySelector('#userName');
+        const modalUserEmailSpan = modalUserInfoDiv?.querySelector('#userEmail');
+        const modalUserPictureImg = modalUserInfoDiv?.querySelector('#userPicture');
+
+        if (modalUserNameSpan) modalUserNameSpan.textContent = name;
+        if (modalUserEmailSpan) modalUserEmailSpan.textContent = email;
+        if (modalUserPictureImg) {
+            if (picture) {
+                modalUserPictureImg.src = picture;
+                modalUserPictureImg.style.display = 'inline-block';
+            } else {
+                modalUserPictureImg.style.display = 'none';
+            }
+        }
+        if (modalUserInfoDiv) modalUserInfoDiv.classList.remove('hidden');
     }
 
-    function updateUI(isLoggedIn) {
-        // Let CSS handle the display of loginBtn based on parent or class toggles if needed
-        if (loginBtn) loginBtn.style.display = isLoggedIn ? 'none' : ''; // Only hide when logged in, otherwise let CSS rule
-        if (logoutBtn) logoutBtn.style.display = isLoggedIn ? 'block' : 'none'; // Show logout when logged in
-        // Sheet input is always visible now
-        // Removed authStatusMessageSpan reference
 
-        if (isLoggedIn) {
-            // User info div visibility is handled by displayUserInfo
-            // Attempt to auto-load last sheet if we just logged in
-            const lastSheetId = localStorage.getItem(lastSheetIdKey);
-            // Check if sheetIdInput exists before accessing value or calling loadSheetDataFromApi
-            if (lastSheetId && sheetIdInput) {
-                sheetIdInput.value = lastSheetId; // Pre-fill input
-                console.log("Attempting to auto-load last sheet:", lastSheetId);
-                // Use timeout to avoid potential race conditions with UI updates
-                setTimeout(() => loadSheetDataFromApi(), 50);
-            }
-        } else {
-            if (userInfoDiv) userInfoDiv.classList.add('hidden');
+    // Updates the state of login/logout buttons in BOTH forms
+    function updateUI(isLoggedIn) {
+        console.log("Updating UI, logged in:", isLoggedIn);
+        // --- Update Initial Form ---
+        if (loginBtn) loginBtn.style.display = isLoggedIn ? 'none' : '';
+        if (logoutBtn) logoutBtn.style.display = isLoggedIn ? 'block' : 'none';
+        if (userInfoDiv) {
+            if (isLoggedIn) userInfoDiv.classList.remove('hidden');
+            else userInfoDiv.classList.add('hidden');
+        }
+        // Adjust initial load button text based on login state
+        if (loadSheetButton) loadSheetButton.textContent = isLoggedIn ? 'Load Sheet (Signed In)' : 'Load Public Sheet';
+
+
+        // --- Update Modal Form ---
+        if (modalLoginButton) modalLoginButton.style.display = isLoggedIn ? 'none' : '';
+        if (modalLogoutButton) modalLogoutButton.style.display = isLoggedIn ? 'block' : 'none';
+        if (modalUserInfoDiv) {
+            if (isLoggedIn) modalUserInfoDiv.classList.remove('hidden');
+            else modalUserInfoDiv.classList.add('hidden');
+        }
+        // Adjust modal load button text based on login state
+        if (modalLoadSheetButton) modalLoadSheetButton.textContent = isLoggedIn ? 'Load Sheet (Signed In)' : 'Load Public Sheet';
+
+
+        // --- Clear User Info Display if Logged Out ---
+        if (!isLoggedIn) {
+            // Clear initial form
             if (userNameSpan) userNameSpan.textContent = '';
             if (userEmailSpan) userEmailSpan.textContent = '';
             if (userPictureImg) {
                 userPictureImg.src = '';
                 userPictureImg.style.display = 'none';
             }
-        }
-
-        // --- Update Status Display based on login state and loaded sheet ---
-        const lastSheetId = localStorage.getItem(lastSheetIdKey);
-        let statusText = 'Not loaded. Sign in or provide Sheet ID.'; // Default
-        let buttonText = 'Load Sheet Data'; // Default
-
-        if (isLoggedIn) {
-            if (lastSheetId) {
-                // Attempt to get a more user-friendly identifier if possible
-                const currentSheetInputValue = sheetIdInput ? sheetIdInput.value : null;
-                let loadedSheetIdentifier = `Last Loaded Sheet ID: ${lastSheetId}`; // Fallback
-                if (currentSheetInputValue) {
-                    const inputSheetId = currentSheetInputValue.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/)?.[1] || currentSheetInputValue;
-                    if (inputSheetId === lastSheetId) {
-                        loadedSheetIdentifier = currentSheetInputValue.includes('/') ? currentSheetInputValue : `Sheet ID: ${lastSheetId}`;
-                    }
-                }
-                statusText = `Loaded: ${loadedSheetIdentifier}`;
-                buttonText = 'Load Different Sheet';
-            } else {
-                statusText = 'Logged in. Select a sheet to load.';
-                // buttonText remains 'Load Sheet Data'
+            // Clear modal form
+            const modalUserNameSpan = modalUserInfoDiv?.querySelector('#userName');
+            const modalUserEmailSpan = modalUserInfoDiv?.querySelector('#userEmail');
+            const modalUserPictureImg = modalUserInfoDiv?.querySelector('#userPicture');
+            if (modalUserNameSpan) modalUserNameSpan.textContent = '';
+            if (modalUserEmailSpan) modalUserEmailSpan.textContent = '';
+            if (modalUserPictureImg) {
+                modalUserPictureImg.src = '';
+                modalUserPictureImg.style.display = 'none';
             }
         }
-        // else: statusText and buttonText remain the default 'Not loaded...'
-
-        // if (loadStatusDisplay) loadStatusDisplay.textContent = statusText; // Removed status display update
-        if (openLoadModalBtn) openLoadModalBtn.textContent = buttonText;
-        // --- End Status Display Update ---
     }
+
 
     function clearTokenAndLogout() {
         currentAccessToken = null;
-        localStorage.removeItem('google_access_token'); // Changed from sessionStorage
+        localStorage.removeItem('google_access_token');
+        localStorage.removeItem(lastSheetIdKey); // Also clear last loaded sheet on logout
         console.log('Logging out.');
+
+        // Reset the view to the initial form
+        resetToInitialView();
+        // Clear any existing table data/state
+        clearTableDataAndState(); // Use renamed import
+
+        // Update auth buttons state
+        updateUI(false);
+
+        // Clean URL hash
         if (window.location.hash.includes('access_token')) {
             try {
                 history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -172,15 +238,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.location.hash = '';
             }
         }
-        updateUI(false);
-        clearTableAndState(); // Call imported function
-
-        // --- Update UI after logout ---
-        // if (loadStatusDisplay) loadStatusDisplay.textContent = 'Not loaded. Sign in or provide Sheet ID.'; // Removed status display update
-        if (openLoadModalBtn) openLoadModalBtn.textContent = 'Load Sheet Data'; // Reset button text
-        // Optional: Automatically open the modal on logout?
-        // if (loadSheetModal) loadSheetModal.style.display = 'block';
-        // --- End of UI update ---
     }
 
     // --- CSV Parsing Utility ---
@@ -212,23 +269,30 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    // --- Google Sheet Loading (Attempts Public CSV, then Private API if needed) ---
+    // --- Google Sheet Loading ---
+    // This function now handles loading initiated from EITHER the initial form OR the modal
+    async function loadSheetDataFromApi(eventSource = 'initial') { // eventSource can be 'initial' or 'modal'
+        console.log(`loadSheetDataFromApi triggered from: ${eventSource}`);
 
-    async function loadSheetDataFromApi() {
-        // Removed isPublic check - we'll try public first regardless
-        const sheetIdInputValue = sheetIdInput ? sheetIdInput.value.trim() : null;
-
-        // Removed login check here - we check later if CSV fails
+        // Determine which input field to use based on the source
+        const currentSheetIdInput = (eventSource === 'modal' && modalSheetIdInput) ? modalSheetIdInput : sheetIdInput;
+        const sheetIdInputValue = currentSheetIdInput ? currentSheetIdInput.value.trim() : null;
 
         if (!sheetIdInputValue) {
             alert('Please enter a Google Sheet ID or URL.');
             return;
         }
 
-        // Logic continues below, moved back inside function scope
+        // Clear previous table data/state (important when loading a new sheet)
+        clearTableDataAndState(); // Use renamed import
+
+        // Show loading indicator
+        if (tableContainer) tableContainer.style.display = 'block'; // Make sure container is visible for indicator
+        showLoadingIndicator('Loading table data...');
+
+
         let sheetId = sheetIdInputValue;
         try {
-            // Extract Sheet ID from URL if provided
             const urlMatch = sheetIdInputValue.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
             if (urlMatch && urlMatch[1]) {
                 sheetId = urlMatch[1];
@@ -238,22 +302,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         console.log("Using Sheet ID:", sheetId);
 
-        showLoadingIndicator('Loading table data...');
-        clearTableAndState();
 
-        let tableData;
+        let tableData = null; // Initialize tableData to null
         let csvError = null;
-        let processingError = null; // To store any error for the final message
-        let apiAttempted = false; // Track if API call was made
+        let processingError = null;
+        let apiAttempted = false;
 
         try { // <<<< OUTER TRY BLOCK STARTS HERE
 
             if (currentAccessToken) {
                 // --- Logged In: Attempt API Fetch Directly ---
                 console.log("User is logged in. Attempting API fetch directly.");
-                apiAttempted = true; // Mark that we are trying the API
-                // No inner try-catch here, let the outer one handle API errors
-                const range = 'Sheet1!A1:Z'; // Adjust range as needed
+                apiAttempted = true;
+                const range = 'Sheet1!A1:Z';
                 const apiUrl = `${SHEETS_API_BASE}/${sheetId}/values/${encodeURIComponent(range)}`;
                 console.log("Fetching private sheet via API:", apiUrl);
 
@@ -263,34 +324,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.log("API Fetch Response Status:", response.status);
 
                 if (!response.ok) {
-                    // Handle specific API errors
                     if (response.status === 401 || response.status === 403) {
                         console.error('Authorization error fetching sheet data via API.');
                         alert('Could not load sheet via API. Please ensure you have access and try signing in again.');
-                        clearTokenAndLogout(); // Log out if token is bad
+                        // Don't logout automatically here, let user decide
                     } else {
                         console.error(`Google Sheets API Error: ${response.status} ${response.statusText}`);
                     }
-                    // Throw a generic error to be caught by the outer catch
                     throw new Error(`API request failed (Status: ${response.status})`);
                 }
 
                 const data = await response.json();
 
                 if (!data || !data.values || data.values.length === 0) {
-                    console.warn('No data found in sheet API response.'); // Changed from error to warn
-                    showLoadingIndicator('No data found in the specified sheet or range (API).');
-                    // No data via API, but not necessarily an error to stop everything
+                    console.warn('No data found in sheet API response.');
                     tableData = []; // Set to empty array
                 } else {
-                    tableData = data.values; // API result
+                    tableData = data.values;
                 }
 
             } else {
                 // --- Not Logged In: Attempt Public Sheet as CSV ---
                 console.log("User not logged in. Attempting public CSV fetch.");
                 try {
-                    console.log(`Attempting to fetch public sheet ${sheetId} as CSV`);
                     const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`;
                     console.log("Fetching CSV from URL:", csvUrl);
                     const response = await fetch(csvUrl);
@@ -302,84 +358,78 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     const csvText = await response.text();
-                    console.log("Raw CSV Text (first 500 chars):", csvText.substring(0, 500));
                     if (!csvText) {
-                        showLoadingIndicator('No data found in the public sheet CSV.');
                         console.warn("CSV text is empty.");
-                        tableData = []; // Set to empty array if CSV is empty
+                        tableData = [];
                     } else {
                         tableData = parseCsv(csvText);
                         console.log("Parsed CSV Data (first 5 rows):", tableData.slice(0, 5));
                     }
 
-                } catch (err) { // This catch is for the inner CSV try block
-                    console.warn("Attempt (CSV) failed:", err.message); // Log warning, not error yet
-                    csvError = err; // Store the error
-                    // Don't set tableData here, let the processing logic handle csvError
+                } catch (err) {
+                    console.warn("Attempt (CSV) failed:", err.message);
+                    csvError = err;
                 }
             }
 
             // --- Process and Display Data ---
-            if (tableData && tableData.length > 0) {
-                // This means either API succeeded (logged in), or CSV succeeded (not logged in)
-                console.log("Data loaded successfully. Populating table.");
-                localStorage.setItem(lastSheetIdKey, sheetId);
-                populateTable(tableData);
-                initializePostDataLoad();
-
-                // --- Update UI after successful load ---
-                if (loadSheetModal) loadSheetModal.style.display = 'none'; // Close modal
-                if (loadStatusDisplay) {
-                    const displayIdentifier = sheetIdInputValue.includes('/') ? sheetIdInputValue : `Sheet ID: ${sheetId}`;
-                    loadStatusDisplay.textContent = `Loaded: ${displayIdentifier}`; // Update status
+            if (Array.isArray(tableData)) {
+                if (tableData.length > 0) {
+                    // SUCCESS: Data loaded
+                    console.log("Data loaded successfully. Populating table.");
+                    localStorage.setItem(lastSheetIdKey, sheetId); // Save successfully loaded ID
+                    populateTable(tableData);
+                    initializePostDataLoad();
+                    showMainContentView(); // Switch to the main view
+                    if (loadSheetModal) loadSheetModal.style.display = 'none'; // Close modal if open
+                } else {
+                    // SUCCESS but NO DATA
+                    console.warn("Sheet loaded successfully but contained no data.");
+                    showLoadingIndicator('Sheet contained no data.'); // Update indicator message
+                    processingError = new Error('Sheet contained no data.'); // Treat as processing error for finally block
+                    showMainContentView(); // Show main view but with the message
+                    if (loadSheetModal) loadSheetModal.style.display = 'none'; // Close modal if open
                 }
-                if (openLoadModalBtn) openLoadModalBtn.textContent = 'Load Different Sheet'; // Change button text
-                // --- End of UI update ---
 
-            } else if (tableData && tableData.length === 0) {
-                // API or CSV succeeded but returned no data
-                console.warn("Sheet loaded successfully but contained no data.");
-                // Keep the 'No data found...' message shown by showLoadingIndicator
             } else if (csvError) {
-                // CSV failed and user wasn't logged in (API attempt skipped)
+                // CSV failed and user wasn't logged in
                 console.error("CSV failed and user not logged in.");
                 alert('Could not load sheet as public CSV. It might be private. Please sign in if you have access.');
-                processingError = csvError; // Store error for finally block message if needed
-                showLoadingIndicator(`Failed to load sheet: ${csvError.message}`); // Show error
-            } else if (apiAttempted && (!tableData || tableData.length === 0)) {
-                // API was attempted (logged in), but failed or returned no data (tableData is [] or undefined)
-                // The specific error/message (like 401/403 or 'No data found') was handled inside the API block.
-                // We might not need to do anything extra here, unless we want a generic fallback message.
-                console.warn("API attempt completed, but resulted in no data or an error handled previously.");
-                // The showLoadingIndicator message from the API block should still be visible.
-            }
-            else {
-                // Should not happen, but catchall
+                processingError = csvError;
+                showLoadingIndicator(`Failed to load sheet: ${csvError.message}`);
+                resetToInitialView(); // Go back to initial form on definite failure
+            } else if (apiAttempted) {
+                // API was attempted but failed (tableData is null)
+                console.error("API attempt failed.");
+                processingError = new Error("API request failed."); // Set a generic error if needed
+                showLoadingIndicator('Failed to load sheet via API.');
+                resetToInitialView(); // Go back to initial form on definite failure
+            } else {
+                // Unknown state
                 console.error("Unknown state after loading attempts.");
                 processingError = new Error("Unknown loading error");
                 showLoadingIndicator('An unknown error occurred while loading the sheet.');
+                resetToInitialView(); // Go back to initial form
             }
 
         } catch (err) { // <<<< OUTER CATCH BLOCK
             console.error('Overall error fetching or processing sheet data:', err);
-            processingError = err; // Store the error
-            // Avoid overwriting more specific messages (like 401/403 alert) unless necessary
-            const loadingIndicatorElement = document.getElementById('table-loading-indicator');
-            // Check if a message is already displayed before overwriting
-            if (!loadingIndicatorElement || !loadingIndicatorElement.textContent || loadingIndicatorElement.textContent === 'Loading table data...') {
-                showLoadingIndicator(`Error loading sheet: ${err.message || 'Unknown error'}`);
-            }
+            processingError = err;
+            showLoadingIndicator(`Error loading sheet: ${err.message || 'Unknown error'}`);
+            resetToInitialView(); // Go back to initial form on any outer catch error
+
         } finally { // <<<< OUTER FINALLY BLOCK
-            // Hide indicator ONLY if data was successfully loaded and processed
-            // Otherwise, leave the error/status message visible
             const loadingIndicatorElement = document.getElementById('table-loading-indicator');
-            if (tableData && tableData.length > 0 && !processingError) {
-                if (loadingIndicatorElement && loadingIndicatorElement.style.display !== 'none') {
+            if (loadingIndicatorElement && !processingError) {
+                if (Array.isArray(tableData) && tableData.length > 0) {
                     hideLoadingIndicator();
                 }
             } else if (loadingIndicatorElement && loadingIndicatorElement.textContent === 'Loading table data...') {
-                // If it's still showing the generic "Loading..." message after all attempts, hide it.
                 hideLoadingIndicator();
+            }
+            // Ensure table container is hidden if we reset to initial view and there was an error
+            if (processingError && tableContainer && initialLoadForm && initialLoadForm.style.display !== 'none') {
+                if (tableContainer) tableContainer.style.display = 'none';
             }
         }
     } // <<< Closing brace for loadSheetDataFromApi function
@@ -404,10 +454,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Initial Load & Event Listeners ---
 
-    // Assign Auth/Load button listeners
+    // Assign Auth/Load button listeners for INITIAL form
     if (loginBtn) loginBtn.onclick = redirectToGoogleLogin;
     if (logoutBtn) logoutBtn.onclick = clearTokenAndLogout;
-    if (loadSheetButton) loadSheetButton.onclick = loadSheetDataFromApi;
+    if (loadSheetButton) loadSheetButton.onclick = () => loadSheetDataFromApi('initial');
+
+    // Assign Auth/Load button listeners for MODAL form
+    if (modalLoginButton) modalLoginButton.onclick = redirectToGoogleLogin;
+    if (modalLogoutButton) modalLogoutButton.onclick = clearTokenAndLogout;
+    if (modalLoadSheetButton) modalLoadSheetButton.onclick = () => loadSheetDataFromApi('modal');
+
 
     // Setup listeners from the table operations module
     setupTableEventListeners();
@@ -415,9 +471,17 @@ document.addEventListener('DOMContentLoaded', function () {
     // Setup hamburger listener
     attachHamburgerListener();
 
-    // --- Modal Event Listeners ---
+    // --- Modal Event Listeners (Opening/Closing) ---
     if (openLoadModalBtn && loadSheetModal) {
         openLoadModalBtn.addEventListener('click', () => {
+            // Pre-fill modal input with current value from initial form if available
+            if (sheetIdInput && modalSheetIdInput) {
+                // Get the *current* value from the initial form's input
+                const initialInput = document.getElementById('initial-load-form')?.querySelector('#sheet-id-input');
+                if (initialInput) modalSheetIdInput.value = initialInput.value;
+            }
+            // Ensure modal auth state matches current state
+            updateUI(!!currentAccessToken);
             loadSheetModal.style.display = 'block';
         });
     }
@@ -431,46 +495,63 @@ document.addEventListener('DOMContentLoaded', function () {
     // Close modal if clicking outside of it
     if (loadSheetModal) {
         window.addEventListener('click', (event) => {
-            // Check if the modal itself was clicked (the overlay), not its content
             if (event.target == loadSheetModal) {
                 loadSheetModal.style.display = 'none';
             }
         });
     }
 
-    // Check for access token on page load
+    // --- Initial Page Load Logic ---
     window.addEventListener('load', () => {
-        let accessToken = localStorage.getItem('google_access_token'); // Changed from sessionStorage
+        let tokenFromStorage = localStorage.getItem('google_access_token');
+        let tokenFromUrl = getAccessTokenFromUrl();
+        const lastSheetId = localStorage.getItem(lastSheetIdKey); // Check for last loaded sheet
 
-        if (accessToken) {
-            console.log('Access Token found in localStorage'); // Changed log message
-            currentAccessToken = accessToken;
-            fetchUserInfo(currentAccessToken);
-            // Auto-load handled within updateUI
-        } else {
-            accessToken = getAccessTokenFromUrl();
-            if (accessToken) {
-                console.log('Access Token found in URL');
-                currentAccessToken = accessToken;
-                localStorage.setItem('google_access_token', accessToken); // Changed from sessionStorage
-                try {
-                    history.replaceState(null, '', window.location.pathname + window.location.search);
-                } catch (e) {
-                    window.location.hash = '';
-                }
-                fetchUserInfo(currentAccessToken);
-                // Auto-load handled within updateUI
-            } else {
-                // No token found anywhere
-                updateUI(false); // Explicitly call updateUI to set initial status/button text
-                // Let CSS handle the display of loginBtn
-                if (loginBtn) loginBtn.style.display = ''; // Ensure login button shows if no token, let CSS handle positioning
-                if (logoutBtn) logoutBtn.style.display = 'none';
-                // Removed authStatusMessageSpan reference
+        if (tokenFromUrl) {
+            console.log('Access Token found in URL');
+            currentAccessToken = tokenFromUrl;
+            localStorage.setItem('google_access_token', tokenFromUrl);
+            // Clean URL
+            try {
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            } catch (e) {
+                window.location.hash = '';
             }
+            // Fetch user info first
+            fetchUserInfo(currentAccessToken).then(() => {
+                // THEN attempt auto-load if possible
+                if (lastSheetId && sheetIdInput) {
+                    console.log("Attempting auto-load after URL token auth:", lastSheetId);
+                    sheetIdInput.value = lastSheetId; // Pre-fill input in initial form
+                    loadSheetDataFromApi('initial'); // Trigger load
+                } else {
+                    resetToInitialView(); // Show initial form if no last sheet
+                    updateUI(true); // Ensure auth buttons are correct
+                }
+            });
+
+        } else if (tokenFromStorage) {
+            console.log('Access Token found in localStorage');
+            currentAccessToken = tokenFromStorage;
+            // Fetch user info first
+            fetchUserInfo(currentAccessToken).then(() => {
+                // THEN attempt auto-load if possible
+                if (lastSheetId && sheetIdInput) {
+                    console.log("Attempting auto-load from storage token:", lastSheetId);
+                    sheetIdInput.value = lastSheetId; // Pre-fill input in initial form
+                    loadSheetDataFromApi('initial'); // Trigger load
+                } else {
+                    resetToInitialView(); // Show initial form if no last sheet
+                    updateUI(true); // Ensure auth buttons are correct
+                }
+            });
+
+        } else {
+            // No token found anywhere
+            console.log('No access token found.');
+            resetToInitialView(); // Ensure initial view is shown
+            updateUI(false); // Set auth buttons to logged-out state
         }
-        // Initial UI update for status/button text is handled by calling updateUI(false) if no token,
-        // or within fetchUserInfo -> updateUI(true) if token is found.
     });
 
-});
+}); // End DOMContentLoaded
