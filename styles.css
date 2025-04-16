@@ -71,6 +71,10 @@ body {
   text-align: center; /* Center content */
 }
 
+#initial-load-form h2 {
+  margin-bottom: 1.5rem; /* Add space below the heading */
+}
+
 /* Style for the "Or" separator */
 .or-separator {
   color: #666;
