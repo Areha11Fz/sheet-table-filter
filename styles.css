@@ -34,8 +34,9 @@ body {
   color: #ddd;
 }
 
-/* Auth & Sheet Input Styles */
-.auth-sheet-container {
+/* Sheet Input & Auth Styles */ /* Updated comment */
+.sheet-auth-container {
+  /* Renamed selector */
   padding: 1rem 2rem;
   max-width: 1200px; /* Match filter/search container width */
   margin: 1rem auto 0 auto; /* Add some margin */
@@ -45,8 +46,23 @@ body {
   text-align: center; /* Center content */
 }
 
+/* Style for the "Or" separator */
+.or-separator {
+  color: #666;
+  font-weight: bold;
+  margin: 1rem 0; /* Increased vertical margin */
+}
+
+#sheet-input-section {
+  display: flex; /* Use flexbox for better alignment/wrapping */
+  flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+  justify-content: center; /* Center items horizontally */
+  align-items: center; /* Align items vertically */
+  gap: 0.5rem; /* Add spacing between items */
+}
+
 #sheet-input-section label {
-  margin-right: 0.5rem;
+  /* margin-right: 0.5rem; */ /* Replaced by gap */
 }
 
 #sheet-input-section input[type="text"] {
@@ -54,6 +70,11 @@ body {
   border: 1px solid #ccc;
   border-radius: 4px;
   margin-right: 0.5rem;
+}
+
+#auth-status {
+  /* Ensure this section's content (button, user info) is centered */
+  text-align: center;
 }
 
 #auth-status button,

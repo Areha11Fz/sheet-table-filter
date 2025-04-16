@@ -25,13 +25,21 @@
         </div>
     </nav>
 
-    <!-- Auth & Sheet Input Section -->
-    <div class="auth-sheet-container">
-        <div id="auth-status" style="margin-bottom: 1rem;">
-            <button id="authorize_button" style="display: none;">Sign In / Authorize</button>
-            <!-- Will rename this ID in JS -->
-            <button id="signout_button" style="display: none;">Sign Out</button> <!-- Will rename this ID in JS -->
-            <!-- User Info Display Area -->
+    <!-- Sheet Input & Auth Section -->
+    <div class="sheet-auth-container"> <!-- Renamed container class for clarity -->
+        <div id="sheet-input-section" style="margin-bottom: 1rem;"> <!-- Removed inline text-align: center -->
+            <label for="sheet-id-input">Google Sheet ID or URL:</label>
+            <input type="text" id="sheet-id-input" placeholder="Enter Sheet ID or URL" size="40">
+            <!-- Removed Public Sheet Checkbox Span -->
+            <button id="load-sheet-button">Load Sheet Data</button>
+        </div>
+
+        <div class="or-separator" style="margin: 0.5rem 0;">Or</div> <!-- Added class, removed inline text-align -->
+
+        <div id="auth-status" style="margin-bottom: 1rem; text-align: center;"> <!-- Added text-align: center -->
+            <button id="authorize_button">Sign In to Load Private Sheet</button> <!-- Removed inline display: block; -->
+            <!-- Modified text, initially visible -->
+            <!-- Sign Out button moved inside userInfo div -->
             <div id="userInfo" class="hidden"
                 style="margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 10px;">
                 <img id="userPicture" src="" alt="User profile picture"
@@ -39,16 +47,14 @@
                 <div>
                     Logged in as: <span id="userName"></span> (<span id="userEmail"></span>)
                 </div>
+                <button id="signout_button" style="display: none; margin-left: 10px;">Sign Out</button>
+                <!-- Moved Sign Out button here -->
             </div>
-            <span id="auth-status-message" style="margin-left: 1rem; font-style: italic;"></span>
+            <!-- Removed auth-status-message span -->
             <!-- Renamed from user-info -->
         </div>
-        <div id="sheet-input-section" style="display: none; margin-bottom: 1rem;">
-            <label for="sheet-id-input">Google Sheet ID or URL:</label>
-            <input type="text" id="sheet-id-input" placeholder="Enter Sheet ID or URL" size="40">
-            <button id="load-sheet-button">Load Sheet Data</button>
-        </div>
-    </div>
+        <!-- Removed duplicate sheet-input-section block -->
+    </div> <!-- Closing sheet-auth-container -->
 
 
     <!-- Filter Section -->
@@ -101,13 +107,6 @@
             <input type="text" id="search-input" placeholder="Search...">
             <select id="search-column">
                 <option value="all">All Columns</option>
-                <option value="0">ID</option>
-                <option value="1">Name</option>
-                <option value="2">Category</option>
-                <option value="3">Subcategory</option>
-                <option value="4">Status</option>
-                <option value="5">Date</option>
-                <option value="6">Priority</option>
             </select>
         </div>
     </div>

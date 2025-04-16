@@ -21,13 +21,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- DOM Elements (Main Script) ---
     const loginBtn = document.getElementById('authorize_button');
     const logoutBtn = document.getElementById('signout_button');
-    const authStatusMessageSpan = document.getElementById('auth-status-message');
+    // Removed authStatusMessageSpan reference
     const userInfoDiv = document.getElementById('userInfo');
     const userNameSpan = document.getElementById('userName');
     const userEmailSpan = document.getElementById('userEmail');
     const userPictureImg = document.getElementById('userPicture');
     const sheetInputSection = document.getElementById('sheet-input-section');
     const sheetIdInput = document.getElementById('sheet-id-input');
+    // Removed: const publicSheetCheckbox = document.getElementById('public-sheet-checkbox');
     const loadSheetButton = document.getElementById('load-sheet-button');
     const hamburgerBtn = document.getElementById('hamburger-btn');
     const navMenu = document.getElementById('nav-menu');
@@ -79,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function () {
             updateUI(true);
         } catch (error) {
             console.error('Failed to fetch user info:', error);
-            if (authStatusMessageSpan) authStatusMessageSpan.textContent = `Error fetching user info: ${error.message}`;
+            // Removed authStatusMessageSpan reference
             updateUI(false);
         }
     }
@@ -99,10 +100,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateUI(isLoggedIn) {
-        if (loginBtn) loginBtn.style.display = isLoggedIn ? 'none' : 'block';
-        if (logoutBtn) logoutBtn.style.display = isLoggedIn ? 'block' : 'none';
-        if (sheetInputSection) sheetInputSection.style.display = isLoggedIn ? 'block' : 'none';
-        if (authStatusMessageSpan) authStatusMessageSpan.textContent = isLoggedIn ? '' : 'Please sign in to load a sheet.';
+        // Let CSS handle the display of loginBtn based on parent or class toggles if needed
+        if (loginBtn) loginBtn.style.display = isLoggedIn ? 'none' : ''; // Only hide when logged in, otherwise let CSS rule
+        if (logoutBtn) logoutBtn.style.display = isLoggedIn ? 'block' : 'none'; // Show logout when logged in
+        // Sheet input is always visible now
+        // Removed authStatusMessageSpan reference
 
         if (isLoggedIn) {
             // User info div visibility is handled by displayUserInfo
@@ -141,75 +143,193 @@ document.addEventListener('DOMContentLoaded', function () {
         clearTableAndState(); // Call imported function
     }
 
-    // --- Google Sheet Loading (API Version using Fetch) ---
+    // --- CSV Parsing Utility ---
+    function parseCsv(csvText) {
+        const rows = csvText.split(/\r?\n/); // Split lines, handle Windows/Unix endings
+        return rows.map(row => {
+            const values = [];
+            let currentVal = '';
+            let inQuotes = false;
+            for (let i = 0; i < row.length; i++) {
+                const char = row[i];
+                const nextChar = row[i + 1];
+
+                if (char === '"' && nextChar === '"') { // Handle escaped quote ""
+                    currentVal += '"';
+                    i++; // Skip next quote
+                } else if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    values.push(currentVal.trim());
+                    currentVal = '';
+                } else {
+                    currentVal += char;
+                }
+            }
+            values.push(currentVal.trim()); // Add last value
+            return values;
+        }).filter(row => row.length > 1 || (row.length === 1 && row[0] !== '')); // Filter empty rows
+    }
+
+
+    // --- Google Sheet Loading (Attempts Public CSV, then Private API if needed) ---
 
     async function loadSheetDataFromApi() {
-        if (!currentAccessToken) {
-            alert('You must be signed in to load a sheet.');
-            return;
-        }
+        // Removed isPublic check - we'll try public first regardless
         const sheetIdInputValue = sheetIdInput ? sheetIdInput.value.trim() : null;
+
+        // Removed login check here - we check later if CSV fails
+
         if (!sheetIdInputValue) {
             alert('Please enter a Google Sheet ID or URL.');
             return;
         }
 
+        // Logic continues below, moved back inside function scope
         let sheetId = sheetIdInputValue;
         try {
+            // Extract Sheet ID from URL if provided
             const urlMatch = sheetIdInputValue.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
             if (urlMatch && urlMatch[1]) {
                 sheetId = urlMatch[1];
             }
-        } catch (e) { /* Ignore */ }
+        } catch (e) {
+            console.warn("Could not parse Sheet ID from input, assuming input is the ID itself.", e);
+        }
+        console.log("Using Sheet ID:", sheetId);
 
-        showLoadingIndicator('Loading table data...'); // Use imported function
-        clearTableAndState(); // Clear previous table/state before loading new
+        showLoadingIndicator('Loading table data...');
+        clearTableAndState();
 
-        try {
-            const range = 'Sheet1!A1:Z'; // Adjust as needed
-            const apiUrl = `${SHEETS_API_BASE}/${sheetId}/values/${encodeURIComponent(range)}`;
+        let tableData;
+        let csvError = null;
+        let processingError = null; // To store any error for the final message
 
-            const response = await fetch(apiUrl, {
-                headers: { 'Authorization': `Bearer ${currentAccessToken}` }
-            });
+        try { // <<<< OUTER TRY BLOCK STARTS HERE
 
-            if (!response.ok) {
-                if (response.status === 401 || response.status === 403) {
-                    console.error('Authorization error fetching sheet data.');
-                    alert('Could not load sheet. Please ensure you have access and try signing in again.');
-                    clearTokenAndLogout();
-                } else {
-                    throw new Error(`Google Sheets API Error: ${response.status} ${response.statusText}`);
+            // --- Attempt 1: Fetch Public Sheet as CSV ---
+            try {
+                console.log(`Attempting to fetch public sheet ${sheetId} as CSV`);
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`;
+                console.log("Fetching CSV from URL:", csvUrl);
+                const response = await fetch(csvUrl);
+                // Removed duplicate line above
+                console.log("CSV Fetch Response Status:", response.status);
+
+                if (!response.ok || response.headers.get('Content-Type')?.includes('text/html')) {
+                    // If not OK, or if Google returns an HTML login page (common for private sheets accessed publicly)
+                    console.warn("CSV Fetch failed or returned HTML (likely private/invalid sheet). Status:", response.status);
+                    throw new Error(`Failed to fetch as CSV (Status: ${response.status})`); // Let outer catch handle this
                 }
-                return;
+
+                const csvText = await response.text();
+                console.log("Raw CSV Text (first 500 chars):", csvText.substring(0, 500));
+                if (!csvText) {
+                    showLoadingIndicator('No data found in the public sheet CSV.');
+                    console.warn("CSV text is empty.");
+                    return; // Exit if CSV is empty
+                }
+                tableData = parseCsv(csvText);
+                // Removed duplicate block above
+                // Removed duplicate return; statement here
+                console.log("Parsed CSV Data (first 5 rows):", tableData.slice(0, 5));
+                // REMOVED incorrect return; statement that was here.
+
+            } catch (err) { // This catch is for the inner CSV try block
+                console.warn("Attempt 1 (CSV) failed:", err.message); // Log warning, not error yet
+                csvError = err; // Store the error
             }
 
-            const data = await response.json();
+            // --- Attempt 2: Fetch Private Sheet via API (if CSV failed) ---
+            if (csvError) {
+                console.log("CSV attempt failed. Checking login status for API attempt.");
+                if (currentAccessToken) {
+                    console.log("User is logged in. Attempting API fetch.");
+                    // No inner try-catch here, let the outer one handle API errors
+                    const range = 'Sheet1!A1:Z'; // Adjust range as needed
+                    const apiUrl = `${SHEETS_API_BASE}/${sheetId}/values/${encodeURIComponent(range)}`;
+                    console.log("Fetching private sheet via API:", apiUrl);
 
-            if (!data || !data.values || data.values.length == 0) {
-                console.error('No data found in sheet response.');
-                showLoadingIndicator('No data found in the specified sheet or range.'); // Update indicator
-                return;
+                    const response = await fetch(apiUrl, {
+                        headers: { 'Authorization': `Bearer ${currentAccessToken}` }
+                    });
+                    // Removed duplicate line above
+                    console.log("API Fetch Response Status:", response.status);
+
+                    if (!response.ok) {
+                        // Handle specific API errors
+                        if (response.status === 401 || response.status === 403) {
+                            console.error('Authorization error fetching sheet data via API.');
+                            alert('Could not load sheet via API. Please ensure you have access and try signing in again.');
+                            clearTokenAndLogout(); // Log out if token is bad
+                        } else {
+                            console.error(`Google Sheets API Error: ${response.status} ${response.statusText}`);
+                        }
+                        // Throw a generic error to be caught by the outer catch
+                        throw new Error(`API request failed (Status: ${response.status})`);
+                    }
+
+                    const data = await response.json();
+
+                    if (!data || !data.values || data.values.length === 0) {
+                        console.error('No data found in sheet API response.');
+                        showLoadingIndicator('No data found in the specified sheet or range (API).');
+                        // No data via API, but not necessarily an error to stop everything
+                        tableData = []; // Set to empty array
+                    } else {
+                        tableData = data.values; // Overwrite tableData with API result
+                        csvError = null; // Clear CSV error since API succeeded
+                    }
+
+                } else {
+                    // CSV failed and user is NOT logged in
+                    console.log("User is not logged in. Cannot attempt API fetch.");
+                    // Don't alert here, let the processing logic decide based on csvError
+                    // We just know we can't try the API.
+                }
             }
 
-            const apiData = data.values;
-            localStorage.setItem(lastSheetIdKey, sheetId);
+            // --- Process and Display Data ---
+            if (tableData && tableData.length > 0) {
+                // This means either CSV succeeded, or CSV failed but API succeeded
+                console.log("Data loaded successfully. Populating table.");
+                localStorage.setItem(lastSheetIdKey, sheetId);
+                populateTable(tableData);
+                initializePostDataLoad();
+            } else if (!csvError && tableData && tableData.length === 0) {
+                // CSV or API succeeded but returned no data
+                console.warn("Sheet loaded successfully but contained no data.");
+                showLoadingIndicator('Sheet contained no data.');
+            } else if (csvError && !currentAccessToken) {
+                // CSV failed and user wasn't logged in (API attempt skipped)
+                console.error("CSV failed and user not logged in.");
+                alert('Could not load sheet as public CSV. It might be private. Please sign in if you have access.');
+                processingError = csvError; // Store error for finally block message if needed
+            } else if (csvError) {
+                // CSV failed, user was logged in, but API must have also failed (or returned no data and tableData is empty)
+                console.error("CSV failed, and API attempt also failed or returned no data.");
+                // Use the original CSV error for the message unless API provided a more specific one (handled by throw above)
+                processingError = csvError;
+                showLoadingIndicator(`Failed to load sheet. Error: ${csvError.message}`);
+            } else {
+                // Should not happen, but catchall
+                console.error("Unknown state after loading attempts.");
+                processingError = new Error("Unknown loading error");
+                showLoadingIndicator('An unknown error occurred while loading the sheet.');
+            }
 
-            populateTable(apiData); // Use imported function
-            initializePostDataLoad(); // Use imported function
-
-        } catch (err) {
-            console.error('Error fetching or processing sheet data:', err);
-            showLoadingIndicator(`Error loading sheet: ${err.message || 'Unknown error'}`); // Update indicator
-        } finally {
-            // Hide indicator only if data was successfully processed or error occurred
-            // populateTable shows the table, so we only need to hide indicator if it's still showing
+        } catch (err) { // <<<< OUTER CATCH BLOCK
+            console.error('Overall error fetching or processing sheet data:', err);
+            processingError = err; // Store the error
+            showLoadingIndicator(`Error loading sheet: ${err.message || 'Unknown error'}`);
+        } finally { // <<<< OUTER FINALLY BLOCK
+            // Hide indicator regardless of success or failure, if it's still showing
             const loadingIndicatorElement = document.getElementById('table-loading-indicator');
             if (loadingIndicatorElement && loadingIndicatorElement.style.display !== 'none') {
-                hideLoadingIndicator(); // Use imported function
+                hideLoadingIndicator();
             }
         }
-    }
+    } // <<< Closing brace for loadSheetDataFromApi function
 
     // --- Hamburger Menu Toggle ---
     function attachHamburgerListener() {
@@ -265,7 +385,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 fetchUserInfo(currentAccessToken);
                 // Auto-load handled within updateUI
             } else {
-                updateUI(false); // Ensure initial state is logged out
+                // updateUI(false); // Don't hide sheet input on initial load
+                // Let CSS handle the display of loginBtn
+                if (loginBtn) loginBtn.style.display = ''; // Ensure login button shows if no token, let CSS handle positioning
+                if (logoutBtn) logoutBtn.style.display = 'none';
+                // Removed authStatusMessageSpan reference
             }
         }
     });
