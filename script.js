@@ -244,94 +244,84 @@ document.addEventListener('DOMContentLoaded', function () {
         let tableData;
         let csvError = null;
         let processingError = null; // To store any error for the final message
+        let apiAttempted = false; // Track if API call was made
 
         try { // <<<< OUTER TRY BLOCK STARTS HERE
 
-            // --- Attempt 1: Fetch Public Sheet as CSV ---
-            try {
-                console.log(`Attempting to fetch public sheet ${sheetId} as CSV`);
-                const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`;
-                console.log("Fetching CSV from URL:", csvUrl);
-                const response = await fetch(csvUrl);
-                // Removed duplicate line above
-                console.log("CSV Fetch Response Status:", response.status);
+            if (currentAccessToken) {
+                // --- Logged In: Attempt API Fetch Directly ---
+                console.log("User is logged in. Attempting API fetch directly.");
+                apiAttempted = true; // Mark that we are trying the API
+                // No inner try-catch here, let the outer one handle API errors
+                const range = 'Sheet1!A1:Z'; // Adjust range as needed
+                const apiUrl = `${SHEETS_API_BASE}/${sheetId}/values/${encodeURIComponent(range)}`;
+                console.log("Fetching private sheet via API:", apiUrl);
 
-                if (!response.ok || response.headers.get('Content-Type')?.includes('text/html')) {
-                    // If not OK, or if Google returns an HTML login page (common for private sheets accessed publicly)
-                    console.warn("CSV Fetch failed or returned HTML (likely private/invalid sheet). Status:", response.status);
-                    throw new Error(`Failed to fetch as CSV (Status: ${response.status})`); // Let outer catch handle this
-                }
+                const response = await fetch(apiUrl, {
+                    headers: { 'Authorization': `Bearer ${currentAccessToken}` }
+                });
+                console.log("API Fetch Response Status:", response.status);
 
-                const csvText = await response.text();
-                console.log("Raw CSV Text (first 500 chars):", csvText.substring(0, 500));
-                if (!csvText) {
-                    showLoadingIndicator('No data found in the public sheet CSV.');
-                    console.warn("CSV text is empty.");
-                    return; // Exit if CSV is empty
-                }
-                tableData = parseCsv(csvText);
-                // Removed duplicate block above
-                // Removed duplicate return; statement here
-                console.log("Parsed CSV Data (first 5 rows):", tableData.slice(0, 5));
-                // REMOVED incorrect return; statement that was here.
-
-            } catch (err) { // This catch is for the inner CSV try block
-                console.warn("Attempt 1 (CSV) failed:", err.message); // Log warning, not error yet
-                csvError = err; // Store the error
-            }
-
-            // --- Attempt 2: Fetch Private Sheet via API (if CSV failed) ---
-            if (csvError) {
-                console.log("CSV attempt failed. Checking login status for API attempt.");
-                if (currentAccessToken) {
-                    console.log("User is logged in. Attempting API fetch.");
-                    // No inner try-catch here, let the outer one handle API errors
-                    const range = 'Sheet1!A1:Z'; // Adjust range as needed
-                    const apiUrl = `${SHEETS_API_BASE}/${sheetId}/values/${encodeURIComponent(range)}`;
-                    console.log("Fetching private sheet via API:", apiUrl);
-
-                    const response = await fetch(apiUrl, {
-                        headers: { 'Authorization': `Bearer ${currentAccessToken}` }
-                    });
-                    // Removed duplicate line above
-                    console.log("API Fetch Response Status:", response.status);
-
-                    if (!response.ok) {
-                        // Handle specific API errors
-                        if (response.status === 401 || response.status === 403) {
-                            console.error('Authorization error fetching sheet data via API.');
-                            alert('Could not load sheet via API. Please ensure you have access and try signing in again.');
-                            clearTokenAndLogout(); // Log out if token is bad
-                        } else {
-                            console.error(`Google Sheets API Error: ${response.status} ${response.statusText}`);
-                        }
-                        // Throw a generic error to be caught by the outer catch
-                        throw new Error(`API request failed (Status: ${response.status})`);
-                    }
-
-                    const data = await response.json();
-
-                    if (!data || !data.values || data.values.length === 0) {
-                        console.error('No data found in sheet API response.');
-                        showLoadingIndicator('No data found in the specified sheet or range (API).');
-                        // No data via API, but not necessarily an error to stop everything
-                        tableData = []; // Set to empty array
+                if (!response.ok) {
+                    // Handle specific API errors
+                    if (response.status === 401 || response.status === 403) {
+                        console.error('Authorization error fetching sheet data via API.');
+                        alert('Could not load sheet via API. Please ensure you have access and try signing in again.');
+                        clearTokenAndLogout(); // Log out if token is bad
                     } else {
-                        tableData = data.values; // Overwrite tableData with API result
-                        csvError = null; // Clear CSV error since API succeeded
+                        console.error(`Google Sheets API Error: ${response.status} ${response.statusText}`);
+                    }
+                    // Throw a generic error to be caught by the outer catch
+                    throw new Error(`API request failed (Status: ${response.status})`);
+                }
+
+                const data = await response.json();
+
+                if (!data || !data.values || data.values.length === 0) {
+                    console.warn('No data found in sheet API response.'); // Changed from error to warn
+                    showLoadingIndicator('No data found in the specified sheet or range (API).');
+                    // No data via API, but not necessarily an error to stop everything
+                    tableData = []; // Set to empty array
+                } else {
+                    tableData = data.values; // API result
+                }
+
+            } else {
+                // --- Not Logged In: Attempt Public Sheet as CSV ---
+                console.log("User not logged in. Attempting public CSV fetch.");
+                try {
+                    console.log(`Attempting to fetch public sheet ${sheetId} as CSV`);
+                    const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`;
+                    console.log("Fetching CSV from URL:", csvUrl);
+                    const response = await fetch(csvUrl);
+                    console.log("CSV Fetch Response Status:", response.status);
+
+                    if (!response.ok || response.headers.get('Content-Type')?.includes('text/html')) {
+                        console.warn("CSV Fetch failed or returned HTML (likely private/invalid sheet). Status:", response.status);
+                        throw new Error(`Failed to fetch as CSV (Status: ${response.status})`);
                     }
 
-                } else {
-                    // CSV failed and user is NOT logged in
-                    console.log("User is not logged in. Cannot attempt API fetch.");
-                    // Don't alert here, let the processing logic decide based on csvError
-                    // We just know we can't try the API.
+                    const csvText = await response.text();
+                    console.log("Raw CSV Text (first 500 chars):", csvText.substring(0, 500));
+                    if (!csvText) {
+                        showLoadingIndicator('No data found in the public sheet CSV.');
+                        console.warn("CSV text is empty.");
+                        tableData = []; // Set to empty array if CSV is empty
+                    } else {
+                        tableData = parseCsv(csvText);
+                        console.log("Parsed CSV Data (first 5 rows):", tableData.slice(0, 5));
+                    }
+
+                } catch (err) { // This catch is for the inner CSV try block
+                    console.warn("Attempt (CSV) failed:", err.message); // Log warning, not error yet
+                    csvError = err; // Store the error
+                    // Don't set tableData here, let the processing logic handle csvError
                 }
             }
 
             // --- Process and Display Data ---
             if (tableData && tableData.length > 0) {
-                // This means either CSV succeeded, or CSV failed but API succeeded
+                // This means either API succeeded (logged in), or CSV succeeded (not logged in)
                 console.log("Data loaded successfully. Populating table.");
                 localStorage.setItem(lastSheetIdKey, sheetId);
                 populateTable(tableData);
@@ -340,29 +330,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 // --- Update UI after successful load ---
                 if (loadSheetModal) loadSheetModal.style.display = 'none'; // Close modal
                 if (loadStatusDisplay) {
-                    // Use the original input value for display if it was a URL, otherwise use the derived sheetId
                     const displayIdentifier = sheetIdInputValue.includes('/') ? sheetIdInputValue : `Sheet ID: ${sheetId}`;
                     loadStatusDisplay.textContent = `Loaded: ${displayIdentifier}`; // Update status
                 }
                 if (openLoadModalBtn) openLoadModalBtn.textContent = 'Load Different Sheet'; // Change button text
                 // --- End of UI update ---
 
-            } else if (!csvError && tableData && tableData.length === 0) {
-                // CSV or API succeeded but returned no data
+            } else if (tableData && tableData.length === 0) {
+                // API or CSV succeeded but returned no data
                 console.warn("Sheet loaded successfully but contained no data.");
-                showLoadingIndicator('Sheet contained no data.');
-            } else if (csvError && !currentAccessToken) {
+                // Keep the 'No data found...' message shown by showLoadingIndicator
+            } else if (csvError) {
                 // CSV failed and user wasn't logged in (API attempt skipped)
                 console.error("CSV failed and user not logged in.");
                 alert('Could not load sheet as public CSV. It might be private. Please sign in if you have access.');
                 processingError = csvError; // Store error for finally block message if needed
-            } else if (csvError) {
-                // CSV failed, user was logged in, but API must have also failed (or returned no data and tableData is empty)
-                console.error("CSV failed, and API attempt also failed or returned no data.");
-                // Use the original CSV error for the message unless API provided a more specific one (handled by throw above)
-                processingError = csvError;
-                showLoadingIndicator(`Failed to load sheet. Error: ${csvError.message}`);
-            } else {
+                showLoadingIndicator(`Failed to load sheet: ${csvError.message}`); // Show error
+            } else if (apiAttempted && (!tableData || tableData.length === 0)) {
+                // API was attempted (logged in), but failed or returned no data (tableData is [] or undefined)
+                // The specific error/message (like 401/403 or 'No data found') was handled inside the API block.
+                // We might not need to do anything extra here, unless we want a generic fallback message.
+                console.warn("API attempt completed, but resulted in no data or an error handled previously.");
+                // The showLoadingIndicator message from the API block should still be visible.
+            }
+            else {
                 // Should not happen, but catchall
                 console.error("Unknown state after loading attempts.");
                 processingError = new Error("Unknown loading error");
@@ -372,11 +363,22 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (err) { // <<<< OUTER CATCH BLOCK
             console.error('Overall error fetching or processing sheet data:', err);
             processingError = err; // Store the error
-            showLoadingIndicator(`Error loading sheet: ${err.message || 'Unknown error'}`);
-        } finally { // <<<< OUTER FINALLY BLOCK
-            // Hide indicator regardless of success or failure, if it's still showing
+            // Avoid overwriting more specific messages (like 401/403 alert) unless necessary
             const loadingIndicatorElement = document.getElementById('table-loading-indicator');
-            if (loadingIndicatorElement && loadingIndicatorElement.style.display !== 'none') {
+            // Check if a message is already displayed before overwriting
+            if (!loadingIndicatorElement || !loadingIndicatorElement.textContent || loadingIndicatorElement.textContent === 'Loading table data...') {
+                showLoadingIndicator(`Error loading sheet: ${err.message || 'Unknown error'}`);
+            }
+        } finally { // <<<< OUTER FINALLY BLOCK
+            // Hide indicator ONLY if data was successfully loaded and processed
+            // Otherwise, leave the error/status message visible
+            const loadingIndicatorElement = document.getElementById('table-loading-indicator');
+            if (tableData && tableData.length > 0 && !processingError) {
+                if (loadingIndicatorElement && loadingIndicatorElement.style.display !== 'none') {
+                    hideLoadingIndicator();
+                }
+            } else if (loadingIndicatorElement && loadingIndicatorElement.textContent === 'Loading table data...') {
+                // If it's still showing the generic "Loading..." message after all attempts, hide it.
                 hideLoadingIndicator();
             }
         }
