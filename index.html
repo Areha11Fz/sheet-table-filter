@@ -23,39 +23,12 @@
         <div class="nav-menu" id="nav-menu">
             <a href="#">About Me</a>
         </div>
+        <!-- Navbar Actions Area -->
+        <div class="nav-actions">
+            <button id="open-load-modal-btn" class="nav-button">Load Sheet</button>
+            <!-- User status/logout could go here later -->
+        </div>
     </nav>
-
-    <!-- Sheet Input & Auth Section -->
-    <div class="sheet-auth-container"> <!-- Renamed container class for clarity -->
-        <div id="sheet-input-section" style="margin-bottom: 1rem;"> <!-- Removed inline text-align: center -->
-            <label for="sheet-id-input">Google Sheet ID or URL:</label>
-            <input type="text" id="sheet-id-input" placeholder="Enter Sheet ID or URL" size="40">
-            <!-- Removed Public Sheet Checkbox Span -->
-            <button id="load-sheet-button">Load Sheet Data</button>
-        </div>
-
-        <div class="or-separator" style="margin: 0.5rem 0;">Or</div> <!-- Added class, removed inline text-align -->
-
-        <div id="auth-status" style="margin-bottom: 1rem; text-align: center;"> <!-- Added text-align: center -->
-            <button id="authorize_button">Sign In to Load Private Sheet</button> <!-- Removed inline display: block; -->
-            <!-- Modified text, initially visible -->
-            <!-- Sign Out button moved inside userInfo div -->
-            <div id="userInfo" class="hidden"
-                style="margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <img id="userPicture" src="" alt="User profile picture"
-                    style="width: 30px; height: 30px; border-radius: 50%; display: none;">
-                <div>
-                    Logged in as: <span id="userName"></span> (<span id="userEmail"></span>)
-                </div>
-                <button id="signout_button" style="display: none; margin-left: 10px;">Sign Out</button>
-                <!-- Moved Sign Out button here -->
-            </div>
-            <!-- Removed auth-status-message span -->
-            <!-- Renamed from user-info -->
-        </div>
-        <!-- Removed duplicate sheet-input-section block -->
-    </div> <!-- Closing sheet-auth-container -->
-
 
     <!-- Filter Section -->
     <div class="filter-container" id="filter-container">
@@ -141,6 +114,36 @@
         <span class="modal-close" id="modalCloseBtn">&times;</span>
         <img class="modal-content" id="modalImage">
         <div id="modalCaption"></div> <!-- Optional caption -->
+    </div>
+
+    <!-- Load Sheet Modal -->
+    <div id="loadSheetModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" id="closeLoadModalBtn">&times;</span>
+            <!-- Moved Sheet Input & Auth Section HERE -->
+            <div class="sheet-auth-container">
+                <h2>Load Google Sheet</h2> <!-- Added a title -->
+                <div id="sheet-input-section" style="margin-bottom: 1rem;">
+                    <label for="sheet-id-input">Google Sheet ID or URL:</label>
+                    <input type="text" id="sheet-id-input" placeholder="Enter Sheet ID or URL" size="40">
+                    <button id="load-sheet-button">Load Public Sheet</button> <!-- Clarified button text -->
+                </div>
+                <div class="or-separator" style="margin: 1rem 0;">Or</div>
+                <div id="auth-status" style="margin-bottom: 1rem; text-align: center;">
+                    <button id="authorize_button">Sign In to Load Private Sheet</button>
+                    <div id="userInfo" class="hidden"
+                        style="margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <img id="userPicture" src="" alt="User profile picture"
+                            style="width: 30px; height: 30px; border-radius: 50%; display: none;">
+                        <div>
+                            Logged in as: <span id="userName"></span> (<span id="userEmail"></span>)
+                        </div>
+                        <button id="signout_button" style="display: none; margin-left: 10px;">Sign Out</button>
+                    </div>
+                </div>
+            </div>
+            <!-- End of moved sheet-auth-container -->
+        </div>
     </div>
 
 </body>

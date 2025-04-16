@@ -32,6 +32,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const loadSheetButton = document.getElementById('load-sheet-button');
     const hamburgerBtn = document.getElementById('hamburger-btn');
     const navMenu = document.getElementById('nav-menu');
+    const loadSheetModal = document.getElementById('loadSheetModal'); // Added
+    const openLoadModalBtn = document.getElementById('open-load-modal-btn'); // Added
+    const closeLoadModalBtn = document.getElementById('closeLoadModalBtn'); // Added
+    const loadStatusDisplay = document.getElementById('load-status-display'); // Added
 
     // --- State (Main Script) ---
     const lastSheetIdKey = 'lastLoadedSheetId'; // localStorage key for sheet ID
@@ -126,6 +130,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 userPictureImg.style.display = 'none';
             }
         }
+
+        // --- Update Status Display based on login state and loaded sheet ---
+        const lastSheetId = localStorage.getItem(lastSheetIdKey);
+        let statusText = 'Not loaded. Sign in or provide Sheet ID.'; // Default
+        let buttonText = 'Load Sheet Data'; // Default
+
+        if (isLoggedIn) {
+            if (lastSheetId) {
+                // Attempt to get a more user-friendly identifier if possible
+                const currentSheetInputValue = sheetIdInput ? sheetIdInput.value : null;
+                let loadedSheetIdentifier = `Last Loaded Sheet ID: ${lastSheetId}`; // Fallback
+                if (currentSheetInputValue) {
+                    const inputSheetId = currentSheetInputValue.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/)?.[1] || currentSheetInputValue;
+                    if (inputSheetId === lastSheetId) {
+                        loadedSheetIdentifier = currentSheetInputValue.includes('/') ? currentSheetInputValue : `Sheet ID: ${lastSheetId}`;
+                    }
+                }
+                statusText = `Loaded: ${loadedSheetIdentifier}`;
+                buttonText = 'Load Different Sheet';
+            } else {
+                statusText = 'Logged in. Select a sheet to load.';
+                // buttonText remains 'Load Sheet Data'
+            }
+        }
+        // else: statusText and buttonText remain the default 'Not loaded...'
+
+        // if (loadStatusDisplay) loadStatusDisplay.textContent = statusText; // Removed status display update
+        if (openLoadModalBtn) openLoadModalBtn.textContent = buttonText;
+        // --- End Status Display Update ---
     }
 
     function clearTokenAndLogout() {
@@ -141,6 +174,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         updateUI(false);
         clearTableAndState(); // Call imported function
+
+        // --- Update UI after logout ---
+        // if (loadStatusDisplay) loadStatusDisplay.textContent = 'Not loaded. Sign in or provide Sheet ID.'; // Removed status display update
+        if (openLoadModalBtn) openLoadModalBtn.textContent = 'Load Sheet Data'; // Reset button text
+        // Optional: Automatically open the modal on logout?
+        // if (loadSheetModal) loadSheetModal.style.display = 'block';
+        // --- End of UI update ---
     }
 
     // --- CSV Parsing Utility ---
@@ -296,6 +336,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 localStorage.setItem(lastSheetIdKey, sheetId);
                 populateTable(tableData);
                 initializePostDataLoad();
+
+                // --- Update UI after successful load ---
+                if (loadSheetModal) loadSheetModal.style.display = 'none'; // Close modal
+                if (loadStatusDisplay) {
+                    // Use the original input value for display if it was a URL, otherwise use the derived sheetId
+                    const displayIdentifier = sheetIdInputValue.includes('/') ? sheetIdInputValue : `Sheet ID: ${sheetId}`;
+                    loadStatusDisplay.textContent = `Loaded: ${displayIdentifier}`; // Update status
+                }
+                if (openLoadModalBtn) openLoadModalBtn.textContent = 'Load Different Sheet'; // Change button text
+                // --- End of UI update ---
+
             } else if (!csvError && tableData && tableData.length === 0) {
                 // CSV or API succeeded but returned no data
                 console.warn("Sheet loaded successfully but contained no data.");
@@ -362,6 +413,29 @@ document.addEventListener('DOMContentLoaded', function () {
     // Setup hamburger listener
     attachHamburgerListener();
 
+    // --- Modal Event Listeners ---
+    if (openLoadModalBtn && loadSheetModal) {
+        openLoadModalBtn.addEventListener('click', () => {
+            loadSheetModal.style.display = 'block';
+        });
+    }
+
+    if (closeLoadModalBtn && loadSheetModal) {
+        closeLoadModalBtn.addEventListener('click', () => {
+            loadSheetModal.style.display = 'none';
+        });
+    }
+
+    // Close modal if clicking outside of it
+    if (loadSheetModal) {
+        window.addEventListener('click', (event) => {
+            // Check if the modal itself was clicked (the overlay), not its content
+            if (event.target == loadSheetModal) {
+                loadSheetModal.style.display = 'none';
+            }
+        });
+    }
+
     // Check for access token on page load
     window.addEventListener('load', () => {
         let accessToken = localStorage.getItem('google_access_token'); // Changed from sessionStorage
@@ -385,13 +459,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 fetchUserInfo(currentAccessToken);
                 // Auto-load handled within updateUI
             } else {
-                // updateUI(false); // Don't hide sheet input on initial load
+                // No token found anywhere
+                updateUI(false); // Explicitly call updateUI to set initial status/button text
                 // Let CSS handle the display of loginBtn
                 if (loginBtn) loginBtn.style.display = ''; // Ensure login button shows if no token, let CSS handle positioning
                 if (logoutBtn) logoutBtn.style.display = 'none';
                 // Removed authStatusMessageSpan reference
             }
         }
+        // Initial UI update for status/button text is handled by calling updateUI(false) if no token,
+        // or within fetchUserInfo -> updateUI(true) if token is found.
     });
 
 });
