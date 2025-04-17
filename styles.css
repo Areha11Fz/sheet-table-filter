@@ -516,14 +516,39 @@ td.copied::after {
     /* Keep flex-direction: row, but wrap items */
     flex-wrap: wrap;
     position: relative; /* Needed for absolute positioning of menu */
+    gap: 1rem; /* Add gap for spacing */
+  }
+
+  .nav-brand {
+    /* Default order 0 */
+    margin-right: auto; /* Push subsequent items right */
   }
 
   .hamburger-btn {
     display: block; /* Show hamburger on small screens */
-    order: 1; /* Place it after the brand */
+    order: 2; /* Place it after nav-actions */
+    padding: 0 0.5rem; /* Add some padding for easier clicking */
+  }
+
+  /* Removed the first (incorrect) .nav-menu block */
+
+  .nav-menu a {
+    /* display: block; */ /* Already flex column items */
+    margin: 0.75rem 1rem; /* Adjust spacing */
+    text-align: center;
+    width: auto; /* Reset width if needed */
+    /* Removed duplicate margin rules */
+  }
+
+  .nav-actions {
+    display: flex; /* Ensure it's visible and uses flex */
+    order: 1; /* Place it after the brand (default order 0) */
+    /* Remove margin-right: auto */
+    /* User status/logout could still be hidden or moved if needed */
   }
 
   .nav-menu {
+    /* This is the correct block now */
     display: none; /* Hide menu by default on small screens */
     flex-direction: column;
     width: 100%;
@@ -532,25 +557,14 @@ td.copied::after {
     top: 100%; /* Position below navbar */
     left: 0;
     padding: 1rem 0;
-    order: 2; /* Ensure it appears below brand and hamburger */
+    /* Ensure it appears below brand and actions/hamburger */
+    order: 3;
+    /* Reset display from none when active */
   }
-
   .nav-menu.active {
     display: flex; /* Show menu when active */
   }
-
-  .nav-menu a {
-    /* display: block; */ /* Already flex column items */
-    margin: 0.75rem 1rem; /* Adjust spacing */
-    text-align: center;
-    width: auto; /* Reset width if needed */
-  }
-
-  .nav-actions {
-    display: none; /* Hide actions area on small screens */
-    /* Alternatively, move items into .nav-menu via JS */
-  }
-}
+} /* End of @media query */
 
 /* Settings styles */
 .settings-column {
